@@ -251,8 +251,7 @@ class TestRunnerLabels:
         self, ci_jobs: dict[str, dict[str, Any]], job: str
     ) -> None:
         runs_on = ci_jobs[job].get("runs-on")
-        assert isinstance(runs_on, list), f"{job} runs-on 必须是标签列表"
-        assert "self-hosted" in runs_on and "pve-linux" in runs_on, f"{job} runner 标签漂移"
+        assert runs_on == "ubuntu-latest", f"{job} runs-on 必须是 ubuntu-latest"
 
 
 class TestBundles:

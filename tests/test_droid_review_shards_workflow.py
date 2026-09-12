@@ -193,10 +193,10 @@ class TestShardPipelineStructure:
         assert "docs_only" in job_if
 
     def test_all_jobs_self_hosted_runner(self, shards_data):
-        """Runner 铁律：分片流水线一律 [self-hosted, pve-linux]"""
+        """Runner 铁律：分片流水线一律 ubuntu-latest"""
         for job_id, job in shards_data["jobs"].items():
-            assert job.get("runs-on") == ["self-hosted", "pve-linux"], (
-                f"job {job_id} runs-on 漂移：{job.get('runs-on')}"
+            assert job.get("runs-on") == "ubuntu-latest", (
+                f"job {job_id} runs-on 漂移到了 ubuntu-latest：{job.get('runs-on')}"
             )
 
     def test_no_setup_venv_reference(self, shards_data):

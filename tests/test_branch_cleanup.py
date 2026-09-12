@@ -2190,9 +2190,9 @@ def test_gh_pr_list_uses_explicit_repo_when_github_repository_set(tmp_path: Path
     assert exit_code == 0
     assert capture_log.exists(), "mock gh must have been invoked"
     log_lines = capture_log.read_text().splitlines()
-    assert any(
-        "--repo hdot123/infraro-core" in line and "pr list" in line for line in log_lines
-    ), f"gh pr list must carry explicit --repo, got: {log_lines}"
+    assert any("--repo hdot123/infraro-core" in line and "pr list" in line for line in log_lines), (
+        f"gh pr list must carry explicit --repo, got: {log_lines}"
+    )
     # 行为不回归：无 open PR 的过期分支仍被正常删除
     remaining_branches = get_remote_branches(bare_repo)
     assert "feature-A" not in remaining_branches, "feature-A should be deleted"

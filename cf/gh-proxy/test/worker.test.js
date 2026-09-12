@@ -153,7 +153,7 @@ test('gh-proxy worker', async (t) => {
     }
   });
 
-  await t.test('injects PAT for hdot123-org private repos (Basic auth)', async () => {
+  await t.test('injects PAT for hdot123 private repos (Basic auth)', async () => {
     let capturedHeaders = null;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (url, options) => {

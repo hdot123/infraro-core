@@ -73,7 +73,7 @@ def test_scan_reusable_secrets_contract():
 
 def test_scan_reusable_job_permissions_and_runner():
     job = _load(_SCAN)["jobs"]["scan"]
-    assert job["runs-on"] == ["self-hosted", "pve-linux"]
+    assert job["runs-on"] == "ubuntu-latest"
     assert job["permissions"] == {"contents": "read", "issues": "write"}
 
 
@@ -365,7 +365,7 @@ def test_heartbeat_reusable_secrets_and_engine():
         "必须声明 hyphen 过渡变体 dispatch-token（双形态并存，防单侧删键）"
     )
     job = data["jobs"]["heartbeat"]
-    assert job["runs-on"] == ["self-hosted", "pve-linux"]
+    assert job["runs-on"] == "ubuntu-latest"
     run_step = {s.get("name", ""): s for s in job["steps"]}["Run heartbeat check"]
     assert run_step["run"] == "python -m infra_core.engine.evolution_heartbeat"
     assert (

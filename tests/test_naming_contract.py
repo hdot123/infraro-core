@@ -668,7 +668,7 @@ class TestAutoMergeTriggerContract:
     - triage 脚本路径必须真实存在（M2 桩引用旧 scripts/ 路径的 exit-127 回归守卫）
     - 合并动作引用本仓 actions/auto-merge（VAL-HARD-104 收编）+ DISPATCH_TOKEN
       （GITHUB_TOKEN 递归防护铁律）
-    - runner 铁律：jobs 一律 [self-hosted, pve-linux]
+    - runner 铁律：jobs 一律 ubuntu-latest
     """
 
     def _load_workflow(self) -> dict:
@@ -766,12 +766,12 @@ class TestAutoMergeTriggerContract:
         assert "${{ secrets.DISPATCH_TOKEN }}" in content
 
     def test_auto_merge_jobs_run_on_self_hosted(self):
-        """runner 铁律（2026-08-26）：jobs 一律 [self-hosted, pve-linux]"""
+        """runner 铁律（2026-08-26）：jobs 一律 ubuntu-latest"""
         data = self._load_workflow()
         for job_name, job in data["jobs"].items():
             runs_on = job.get("runs-on", [])
-            assert "self-hosted" in runs_on and "pve-linux" in runs_on, (
-                f"job {job_name} must run on [self-hosted, pve-linux], got {runs_on}"
+            assert runs_on == "ubuntu-latest", (
+                f"job {job_name} must run on ubuntu-latest, got {runs_on}"
             )
 
 

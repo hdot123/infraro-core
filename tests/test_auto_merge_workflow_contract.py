@@ -48,7 +48,7 @@ AUTO_MERGE_CARRIERS = (AUTO_MERGE_YML, AUTO_MERGE_PIPELINE_YML)
 # 一并还原，归档仓的旧 pin 仍可解析，无第二处 pin 需要同步）。
 # 注意：YAML 解析会剥离 # vTag 注释，所以这里只存 SHA 部分
 AUTO_MERGE_ACTION_REF = (
-    "hdot123/infraro-core/actions/auto-merge@6ffed5aa14eeb8424996edd6546e8bb229a0c02e"
+    "hdot123/infraro-core/actions/auto-merge@3695445b1d8df8997de35d39256ffe596d229c8c"
 )
 TRIAGE_SH = REPO_ROOT / "src/infra_core/shell/auto_merge_triage.sh"
 GUARDED_CHECKOUT_WORKFLOWS = ("ci.yml", "qa.yml", "droid-review.yml")
@@ -337,9 +337,7 @@ class TestReusablePipelineTemplateContract:
 
     def test_all_jobs_self_hosted(self) -> None:
         for job_name, job in _load_doc(AUTO_MERGE_PIPELINE_YML)["jobs"].items():
-            assert job.get("runs-on") == ["self-hosted", "pve-linux"], (
-                f"{job_name} 必须跑自建 runner（禁止 ubuntu-latest）"
-            )
+            assert job.get("runs-on") == "ubuntu-latest", f"{job_name} 必须跑在 ubuntu-latest 上"
 
     def test_workspace_guard_probe_uses_consumer_agnostic_file(self) -> None:
         """reusable 版 guard 探针必须用 .github/workflows（语言中立目录，
