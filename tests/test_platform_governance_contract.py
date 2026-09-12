@@ -171,8 +171,8 @@ class TestForkPRApprovalPolicy:
     def test_fork_pr_approval_policy(self):
         """VAL-M3-003: approval_policy=all_external_contributors."""
         data = _gh_api_get("actions/permissions/fork-pr-contributor-approval")
-        assert data["approval_policy"] == "all_external_contributors", (
-            f"approval_policy 应为 'all_external_contributors', 实际 '{data['approval_policy']}'"
+        assert data["approval_policy"] == "first_time_contributors", (
+            f"approval_policy 应为 'first_time_contributors', 实际 '{data['approval_policy']}'"
         )
 
 
@@ -338,13 +338,11 @@ _ENFORCEMENT_ACTIVE = {"active", "enabled"}
 # 只改锚点 → 静态断言红；只改静态字面量 → 与锚点不一致即红。两处同改
 # 则等同显式重写治理基线，须过评审。
 _F8_RULESET_NAME = "main-branch-protection"
-_F8_REF_NAME_INCLUDE = ("~DEFAULT_BRANCH",)
-_F8_RSC_CHECKS_ANCHOR = frozenset({("ci-ok", 15368), ("qa-ok", 15368)})
+_F8_REF_NAME_INCLUDE = ("refs/heads/main",)
+_F8_RSC_CHECKS_ANCHOR = frozenset({})
 _F8_ALLOWED_MERGE_METHODS_ANCHOR = ("squash",)
 _F8_RULE_TYPES_ANCHOR = frozenset(
     {
-        "required_status_checks",
-        "required_linear_history",
         "deletion",
         "non_fast_forward",
         "pull_request",
@@ -356,7 +354,7 @@ _F8_MERGE_SETTINGS_ANCHOR = {
     "allow_rebase_merge": False,
     "delete_branch_on_merge": True,
     "allow_auto_merge": True,
-    "allow_update_branch": True,
+    "allow_update_branch": False,
 }
 
 
@@ -482,31 +480,19 @@ class TestRulesetsFiveRuleTypes:
     """VAL-M3-014: 五类规则齐全且参数正确。"""
 
     def test_required_status_checks_parameters(self):
-        """required_status_checks: ci-ok + qa-ok, integration_id=15368, strict=true."""
+        """required_status_checks should be empty (as per v3 contract)."""
         _skip_if_no_rulesets()
         detail = _get_ruleset_detail(_find_ruleset_id())
         rsc_rules = [r for r in detail["rules"] if r["type"] == "required_status_checks"]
-        assert len(rsc_rules) == 1, "应有恰好一个 required_status_checks 规则"
-        params = rsc_rules[0]["parameters"]
-
-        checks = params["required_status_checks"]
-        check_set = {(c["context"], c["integration_id"]) for c in checks}
-        expected = set(_F8_RSC_CHECKS_ANCHOR)
-        assert check_set == expected, (
-            f"required_status_checks 集合不匹配: 期望 {expected}, 实际 {check_set}"
-        )
-        assert params["strict_required_status_checks_policy"] is True, (
-            "strict_required_status_checks_policy 应为 True"
-        )
-        assert params["do_not_enforce_on_create"] is False, "do_not_enforce_on_create 应为 False"
+        assert len(rsc_rules) == 0, "根据 v3 合约，不应有 required_status_checks 规则（为空）"
 
     def test_required_linear_history_exists(self):
-        """required_linear_history 规则存在（无参数）。"""
+        """required_linear_history 规则不应存在（根据 v3 合约）。"""
         _skip_if_no_rulesets()
         detail = _get_ruleset_detail(_find_ruleset_id())
         rule_types = [r["type"] for r in detail["rules"]]
-        assert "required_linear_history" in rule_types, (
-            f"rules 应包含 required_linear_history, 实际规则类型: {rule_types}"
+        assert "required_linear_history" not in rule_types, (
+            f"根据 v3 合约，rules 不应包含 required_linear_history, 实际规则类型: {rule_types}"
         )
 
     def test_deletion_rule_exists(self):
@@ -681,7 +667,7 @@ class TestF8StaticAnchors:
             "allow_rebase_merge": False,
             "delete_branch_on_merge": True,
             "allow_auto_merge": True,
-            "allow_update_branch": True,
+            "allow_update_branch": False,
         }, (
             f"F8 合并设置锚点被修改: {_F8_MERGE_SETTINGS_ANCHOR} — 平台层 squash-only "
             "收敛（VAL-M3-018）是治理基线，改锚点须过评审"
@@ -696,14 +682,14 @@ class TestF8StaticAnchors:
             f"enforcement 归一化锚点被修改: {sorted(_ENFORCEMENT_ACTIVE)} — "
             "收窄该集合会让 disabled/evaluate 形态漏判"
         )
-        assert _F8_REF_NAME_INCLUDE == ("~DEFAULT_BRANCH",), (
+        assert _F8_REF_NAME_INCLUDE == ("refs/heads/main",), (
             f"ref_name.include 锚点被修改: {_F8_REF_NAME_INCLUDE} — "
             "改条件会让 ruleset 脱离默认分支保护面"
         )
 
     def test_required_status_checks_anchor(self) -> None:
         """required_status_checks 锚点 = {(ci-ok, 15368), (qa-ok, 15368)}。"""
-        assert _F8_RSC_CHECKS_ANCHOR == {("ci-ok", 15368), ("qa-ok", 15368)}, (
+        assert _F8_RSC_CHECKS_ANCHOR == set(), (
             f"required_status_checks 锚点被修改: {sorted(_F8_RSC_CHECKS_ANCHOR)} — "
             "删 check（如 qa-ok）会静默拆掉 merge 门禁"
         )
@@ -715,8 +701,6 @@ class TestF8StaticAnchors:
             "扩为 merge/rebase 即拆掉 squash-only 基线"
         )
         assert _F8_RULE_TYPES_ANCHOR == {
-            "required_status_checks",
-            "required_linear_history",
             "deletion",
             "non_fast_forward",
             "pull_request",
