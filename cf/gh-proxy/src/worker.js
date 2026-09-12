@@ -10,7 +10,7 @@
  *   3. Host whitelist — 403 if target host not allowed
  *
  * PAT injection:
- *   - For /https://github.com/hdot123-org/* paths: inject Basic auth
+ *   - For /https://github.com/hdot123/* paths: inject Basic auth
  *     (x-access-token:<PAT> base64-encoded) — github.com git smart-http
  *     endpoint REJECTS Bearer/token form (returns 401), only Basic works
  *   - For all other paths: forward as-is (strip incoming auth headers)
@@ -38,7 +38,7 @@ var ALLOWED_HOSTS = [
  * @returns {boolean}
  */
 function isPrivateRepoPath(targetPath) {
-  return targetPath.startsWith("https://github.com/hdot123-org/");
+  return targetPath.startsWith("https://github.com/hdot123/");
 }
 
 /**

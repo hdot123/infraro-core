@@ -59,11 +59,11 @@ class TestTriggerAndRunSurface:
         )
 
     def test_runs_on_self_hosted_pve_linux(self):
-        """runs-on: [self-hosted, pve-linux]"""
+        """runs-on: ubuntu-latest"""
         data = _load(WORKFLOW)
         job = data["jobs"]["execute"]
-        assert job["runs-on"] == ["self-hosted", "pve-linux"], (
-            f"runs-on must be [self-hosted, pve-linux], got {job['runs-on']}"
+        assert job["runs-on"] == "ubuntu-latest", (
+            f"runs-on must be ubuntu-latest, got {job['runs-on']}"
         )
 
     def test_timeout_minutes_60(self):

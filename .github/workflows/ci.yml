@@ -65,6 +65,8 @@ jobs:
           fi
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -555,6 +557,20 @@ jobs:
     needs: ci-ok
     if: always() && github.event_name == 'pull_request'
     steps:
+      - name: Workspace guard (sparse residue detox)
+        run: |
+          set -euo pipefail
+          if [ -d "$GITHUB_WORKSPACE/.git" ]; then
+            # Check for sparse checkout or prune residue
+            SPARSE_FLAG=$(git -C "$GITHUB_WORKSPACE" config --type=bool --get core.sparseCheckout 2>/dev/null || echo false)
+            if [ "$SPARSE_FLAG" = "true" ] || [ ! -f "$GITHUB_WORKSPACE/.github/actions/setup-venv/action.yml" ]; then
+              echo "::warning::Workspace has sparse/prune residue; removing .git for a clean re-clone"
+              rm -rf "$GITHUB_WORKSPACE/.git"
+            fi
+          fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
       # INFRA-569：webhook payload 组装依赖 jq，自建 runner 不保证预装，兜底安装
       - uses: ./.github/actions/ensure-jq
 
@@ -584,6 +600,10 @@ jobs:
           WEBHOOK_NOTIFY_STRICT: ${{ vars.WEBHOOK_NOTIFY_STRICT }}
         run: |
           set -euo pipefail
+          if [ -z "$WEBHOOK_URL" ] || [ -z "$N8N_CI_TOKEN" ]; then
+            echo "::warning::webhook secrets not configured — skipping notification (bring-up phase)"
+            exit 0
+          fi
           PAYLOAD=$(jq -n \
             --arg repo "${{ github.repository }}" \
             --argjson pr_number "${{ github.event.pull_request.number || 0 }}" \

@@ -6,7 +6,7 @@
 - mode 门控：self-heal-rerun / cancel-on-ci-fail 两 job 各按 inputs.mode 精确选择
 - 本文件不引用具体 workflow 名（事件守卫由 caller 承载，防双份守卫漂移）
 - 503 特征表 / rerun-failed-jobs / attempt 限界 / cancel 过滤逻辑与原内联实现等价
-- 零 checkout（self-hosted 共享工作区防毒铁律）+ runs-on [self-hosted, pve-linux]
+- 零 checkout + runs-on ubuntu-latest
 - 门禁语义：只请求 rerun / cancel，绝不携带 merge/--admin/--force
 
 quota-sweep 的 artifact 前缀过滤契约（droid-review-debug-）不在本文件——
@@ -225,9 +225,7 @@ class TestSelfHostedSafety:
 
     def test_all_jobs_self_hosted(self, handlers_data):
         for job_name, job in handlers_data["jobs"].items():
-            assert job.get("runs-on") == ["self-hosted", "pve-linux"], (
-                f"{job_name} 必须跑自建 runner（禁止 ubuntu-latest）"
-            )
+            assert job.get("runs-on") == "ubuntu-latest", f"{job_name} 必须跑在 ubuntu-latest 上"
 
     def test_no_checkout_anywhere(self, handlers_data):
         """纯 gh API handler：任何 job 都不得 checkout（共享持久工作区防毒）"""

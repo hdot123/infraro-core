@@ -84,8 +84,8 @@ def test_resolve_repo_owner_name(monkeypatch):
 
     # Test both HTTPS and SSH formats
     test_urls = [
-        ("https://github.com/hdot123/infraro-core.git", "hdot123", "infra-core"),
-        ("git@github.com:hdot123/infraro-core.git", "hdot123", "infra-core"),
+        ("https://github.com/hdot123/infraro-core.git", "hdot123", "infraro-core"),
+        ("git@github.com:hdot123/infraro-core.git", "hdot123", "infraro-core"),
         ("https://github.com/owner/repo", "owner", "repo"),
     ]
 
@@ -156,7 +156,7 @@ def test_resolve_repo_owner_name_prefers_github_repository_env(monkeypatch):
     monkeypatch.setenv("GITHUB_REPOSITORY", "hdot123/infraro-core")
     monkeypatch.setattr(subprocess, "run", forbidden_run)
     owner, name = mod._resolve_repo_owner_name()
-    assert (owner, name) == ("hdot123", "infra-core")
+    assert (owner, name) == ("hdot123", "infraro-core")
 
 
 def test_resolve_repo_owner_name_still_falls_back_to_remote(monkeypatch):
@@ -243,7 +243,7 @@ def test_resolve_repo_from_issue_url_cross_repo():
     )
     assert mod._resolve_repo_from_issue_url(
         "https://github.com/hdot123/infraro-core/issues/123"
-    ) == ("hdot123", "infra-core")
+    ) == ("hdot123", "infraro-core")
 
 
 def test_resolve_repo_from_issue_url_invalid_returns_none():
