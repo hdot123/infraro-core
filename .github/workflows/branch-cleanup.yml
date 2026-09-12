@@ -1,0 +1,56 @@
+# Branch Cleanup - Thin Caller (M4, INFRA-583)
+# Calls the infra-core composite action for branch cleanup operations.
+# Naming contract: workflow name must be exactly "Branch Cleanup".
+#
+# Replaces the M2 hotfix stub (workflow_dispatch-only, referencing
+# scripts/branch_cleanup.sh which never existed at that path — manual runs
+# exited 127). Behavior parity with the memory-core caller: three triggers,
+# PR-close → immediate mode, schedule/dispatch → scheduled mode.
+
+name: Branch Cleanup
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour at minute 0 (UTC)
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Cleanup mode: scheduled (sweep all) or immediate (specific branch)'
+        required: true
+        default: 'scheduled'
+        type: choice
+        options:
+          - scheduled
+          - immediate
+      branch:
+        description: 'Branch to clean (required for immediate mode)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch Cleanup
+        uses: hdot123/infraro-core/actions/branch-cleanup@67e493377190fdea560042476bf5fea5dd67e62b # v0.16.0 (PR #266)
+        with:
+          mode: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'pull_request' && 'immediate' || 'scheduled') }}
+          trigger-branch: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.event.pull_request.head.ref || '' }}
+          dispatch-token: ${{ secrets.DISPATCH_TOKEN }}
+          branch-age-merged-hours: ${{ vars.BRANCH_AGE_MERGED_HOURS }}
+          branch-age-closed-hours: ${{ vars.BRANCH_AGE_CLOSED_HOURS }}
+          branch-age-orphan-hours: ${{ vars.BRANCH_AGE_ORPHAN_HOURS }}
+          linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+          linear-project-id: ${{ vars.LINEAR_PROJECT_INFRA_CORE_ID }}
