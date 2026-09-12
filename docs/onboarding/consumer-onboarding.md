@@ -5,7 +5,7 @@
 执行体全部由 `hdot123/infraro-core` 的 reusable workflows / composite actions
 承载，消费仓**零脚本副本**。引擎版本由 workflow 引用（SHA 级真源）决定——
 `job.workflow_sha` 解析当前 reusable workflow 文件所在 commit，经
-`pip install git+https://…infra-core.git@<ref>` 直接交付，PEP 610
+`pip install git+https://…infraro-core.git@<ref>` 直接交付，PEP 610
 `direct_url.json` `commit_id` 双断言防漂移。Python 消费仓的 `pyproject.toml`
 pin 仅决定本地 CLI 面版本（齐步走义务保留），见 §5。
 
@@ -124,7 +124,7 @@ Repo **variables**（`gh api repos/<org>/<repo>/actions/variables`）按需配�
 `uses:` 行引用 infra-core reusable workflow（如
 `hdot123/infraro-core/.github/workflows/evolution-scan.yml@v0.15.0`），
 reusable workflow 内部通过 `job.workflow_sha`（定义当前 job 的 workflow 文件 commit，
-官方文档语义）解析出引擎 commit SHA，经 `pip install git+https://…infra-core.git@<ref>`
+官方文档语义）解析出引擎 commit SHA，经 `pip install git+https://…infraro-core.git@<ref>`
 直接交付。PEP 610 `direct_url.json` 的 `vcs_info.commit_id` 双断言防 pip 同版本静默跳过。
 
 **Python 消费仓**的 `pyproject.toml` pin 仅决定本地 CLI 面版本（齐步走义务保留）：

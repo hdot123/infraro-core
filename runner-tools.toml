@@ -35,6 +35,6 @@ shellcheck = "0.10.0"
 uv_cache_dir = "/var/cache/uv"
 pip_cache_dir = "/var/cache/pip"
 
-# runner 标签（runs-on 选择器）
+# runner 标签（runs-on 选择器）- migrated to GitHub-hosted runners
 [runner]
-labels = ["self-hosted", "pve-linux"]
+labels = ["ubuntu-latest"]

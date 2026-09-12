@@ -1,10 +1,10 @@
-# infra-core
+# infraro-core
 
 组织级演进引擎：自进化/审计/门禁体系的共享基础设施。
 
 ## 定位
 
-infra-core 是从 memory-core 抽离的组织级共享引擎，提供：
+infraro-core 是从 memory-core 抽离的组织级共享引擎，提供：
 
 - **引擎层**：scanner、utils、adapters、heartbeat、self-audit、version-sync、锚点助手、droid-review 分片/发布（单源 `src/infra_core/engine/`）
 - **规则包**：memory pack（含 daily-audit、layout-audit、hygiene、error-patterns 等规则模块）
@@ -27,7 +27,7 @@ brew install python@3.12
 uv python install 3.12
 ```
 
-### 安装 infra-core
+### 安装 infraro-core
 
 ```bash
 # 从源码安装（开发模式）
@@ -84,12 +84,12 @@ audit_tools:
 
 ## 发版公告与下游自动接单
 
-infra-core 发版时，通过两条触发面（推送 + 轮询）自动广播升级公告，消费仓（`engineConsumer: true`）自动接单开 pin-bump PR，CI → auto-merge 闭环。
+infraro-core 发版时，通过两条触发面（推送 + 轮询）自动广播升级公告，消费仓（`engineConsumer: true`）自动接单开 pin-bump PR，CI → auto-merge 闭环。
 
 **链路要素**：
 - **推送触发面**：`release-announce.yml` workflow（on: release published）POST 到 Mac 侧 webhook → `trigger-release.sh` 派发 droid session
 - **轮询触发面**（默认）：`poll-releases.sh` + launchd 定时轮询 GitHub Releases API，发现新 release 后调用 `trigger-release.sh`
-- **接单 skill**：`release-gateway` skill 指导 droid 升级消费仓 infra-core pin（pyproject git+、workflow @tag、测试断言、文档等）
+- **接单 skill**：`release-gateway` skill 指导 droid 升级消费仓 infraro-core pin（pyproject git+、workflow @tag、测试断言、文档等）
 - **幂等保证**：per-tag 锁文件，重复触发零副作用
 - **双触发面共存**：推送 + 轮询经幂等锁天然共存，推送面可休眠（secret 缺失时优雅跳过）
 
@@ -100,7 +100,7 @@ infra-core 发版时，通过两条触发面（推送 + 轮询）自动广播升
 ## 架构
 
 ```
-infra-core/
+infraro-core/
 ├── src/infra_core/
 │   ├── engine/          # 自进化引擎单源（scanner/utils/adapters/heartbeat/self-audit/version-sync/锚点助手）
 │   ├── packs/           # 规则包（memory 等，经 entry points 发现）

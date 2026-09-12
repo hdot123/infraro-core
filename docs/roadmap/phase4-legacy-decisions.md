@@ -41,7 +41,7 @@
 
 ### 方案 A：正式化（推荐）
 1. 将 `~/tool/shared-workflows/` 迁移到 Git 仓库管理
-2. 建立独立仓库：`hdot123-org/shared-workflows`（或并入 infra-core）
+2. 建立独立仓库：`hdot123-org/shared-workflows`（或并入 infraro-core）
 3. 明确版本策略：
    - 使用 tag（如 `@v1.0.0`）而非 `@main`
    - 与 infra-core 版本解耦，独立发布

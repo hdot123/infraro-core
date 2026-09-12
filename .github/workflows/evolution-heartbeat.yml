@@ -15,7 +15,7 @@
 # 引擎来源（v0.15.0 解耦后）：
 # - 条件性消费仓安装（Install package 步）：pyproject.toml 守卫，Python 仓保留
 #   inline audit_tools 契约（memory-* scripts），非 Python 仓跳过
-# - 独立引擎安装步（Install engine）：pip install git+https://...infra-core.git@<ref>
+# - 独立引擎安装步（Install engine）：pip install git+https://...infraro-core.git@<ref>
 #   ref 解析链：inputs.engine_ref || job.workflow_sha || github.sha
 #   （job.workflow_sha = 定义当前 job 的 workflow 文件 commit；reusable 场景 =
 #   caller uses 解析出的 reusable 文件 commit；直触场景 = 本仓 commit）
