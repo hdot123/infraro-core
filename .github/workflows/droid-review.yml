@@ -367,25 +367,25 @@ jobs:
           fi
 
       - name: Write BYOM settings file
-        # LLM 链路：ts 内网直达 Kong（tailscale serve, tailnet only, LE 证书）。
-        # 原 https://ai.exa.edu.kg/v1 需经 CF → node-22(东京) → 隧道回 node-01，
-        # 4 段网络且暴露公网端点；github 可达性已由 CF Worker 反代解决后，
-        # 境外跳板失去必要性（Bailian 是国内服务，杭州 Kong 出网即最短路径）。
+        # LLM 链路：hosted runner 公网直达 Kong（via CF Worker 反向代理）。
+        # tailnet only 端点（node1.tail5e888.ts.net）hosted runner 无法访问，故
+        # 改用公网可达端点 https://ai.exa.edu.kg/v1。
+        # 旧路径：ts 内网直达 Kong（tailscale serve, tailnet only, LE 证书），
         # 前置依赖：runner 机 /etc/hosts 有 node1.tail5e888.ts.net 静态条目
         # （runner 的 tailscale accept-dns=false，MagicDNS 不可用）。
-        # apiKey 字段仅为 provider 格式占位——内网 Kong 无认证（request-transformer
-        # 会注入真实上游 key），且 heredoc 为单引号模式，变量从不展开。
+        # apiKey 字段现改为真实注入——公网端点必须带认证 key（不再是仅格式占位）。
         run: |
           set -euo pipefail
           mkdir -p ~/.factory
+          # Create initial settings file with placeholder
           cat > ~/.factory/settings.json << 'SETTINGS_EOF'
           {
             "customModels": [
               {
                 "model": "qwen3.7-plus",
                 "displayName": "Bailian Qwen 3.7 Plus",
-                "baseUrl": "https://node1.tail5e888.ts.net/v1",
-                "apiKey": "${NVIDIA_KONG_PROXY_KEY}",
+                "baseUrl": "https://ai.exa.edu.kg/v1",
+                "apiKey": "",
                 "provider": "generic-chat-completion-api",
                 "maxOutputTokens": 65536,
                 "noImageSupport": true
@@ -393,7 +393,9 @@ jobs:
             ]
           }
           SETTINGS_EOF
-          echo "BYOM settings written to ~/.factory/settings.json"
+          # Inject the API key from environment variable to avoid logging it
+          python3 -c "import json, os; settings_file = '$HOME/.factory/settings.json'; data = json.load(open(settings_file)); data['customModels'][0]['apiKey'] = os.environ['NVIDIA_KONG_PROXY_KEY']; f=open(settings_file, 'w'); json.dump(data, f, indent=2); f.close()"
+          echo "BYOM settings written to ~/.factory/settings.json with API key injection"
           python3 -c "import json; json.load(open('$HOME/.factory/settings.json')); print('JSON validation passed')"
 
       - name: Pre-check credentials
