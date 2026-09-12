@@ -49,8 +49,8 @@ jobs:
           mode: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'pull_request' && 'immediate' || 'scheduled') }}
           trigger-branch: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.event.pull_request.head.ref || '' }}
           dispatch-token: ${{ secrets.DISPATCH_TOKEN }}
-          branch-age-merged-hours: ${{ vars.BRANCH_AGE_MERGED_HOURS }}
-          branch-age-closed-hours: ${{ vars.BRANCH_AGE_CLOSED_HOURS }}
-          branch-age-orphan-hours: ${{ vars.BRANCH_AGE_ORPHAN_HOURS }}
+          branch-age-merged-hours: ${{ vars.BRANCH_AGE_MERGED_HOURS || '1' }}
+          branch-age-closed-hours: ${{ vars.BRANCH_AGE_CLOSED_HOURS || '4' }}
+          branch-age-orphan-hours: ${{ vars.BRANCH_AGE_ORPHAN_HOURS || '72' }}
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
-          linear-project-id: ${{ vars.LINEAR_PROJECT_INFRA_CORE_ID }}
+          linear-project-id: ${{ vars.LINEAR_PROJECT_INFRA_CORE_ID || '' }}

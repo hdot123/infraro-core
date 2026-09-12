@@ -555,6 +555,18 @@ jobs:
     needs: ci-ok
     if: always() && github.event_name == 'pull_request'
     steps:
+      - name: Workspace guard (sparse residue detox)
+        run: |
+          set -euo pipefail
+          if [ -d "$GITHUB_WORKSPACE/.git" ]; then
+            # Check for sparse checkout or prune residue
+            SPARSE_FLAG=$(git -C "$GITHUB_WORKSPACE" config --type=bool --get core.sparseCheckout 2>/dev/null || echo false)
+            if [ "$SPARSE_FLAG" = "true" ] || [ ! -f "$GITHUB_WORKSPACE/.github/actions/setup-venv/action.yml" ]; then
+              echo "::warning::Workspace has sparse/prune residue; removing .git for a clean re-clone"
+              rm -rf "$GITHUB_WORKSPACE/.git"
+            fi
+          fi
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # INFRA-569：webhook payload 组装依赖 jq，自建 runner 不保证预装，兜底安装
@@ -583,7 +595,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           GATEWAY_GW_TOKEN: ${{ secrets.GATEWAY_GW_TOKEN }}
-          WEBHOOK_NOTIFY_STRICT: ${{ vars.WEBHOOK_NOTIFY_STRICT }}
+          WEBHOOK_NOTIFY_STRICT: ${{ vars.WEBHOOK_NOTIFY_STRICT || 'false' }}
         run: |
           set -euo pipefail
           PAYLOAD=$(jq -n \
