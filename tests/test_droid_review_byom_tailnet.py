@@ -1,6 +1,6 @@
 """droid-review BYOM public endpoint routing test（F2 round 7 fix）。
 
-Regression protection: BYOM LLM call baseUrl must use public endpoint 
+Regression protection: BYOM LLM call baseUrl must use public endpoint
 (https://ai.exa.edu.kg/v1 via CF Worker reverse proxy), with real API key
 injection to enable hosted runner access.
 
@@ -55,11 +55,11 @@ def _get_step_comment_block(workflow_path: Path, step_name: str) -> str:
     raw = workflow_path.read_text().splitlines()
     step_lines = [i for i, line in enumerate(raw) if f"name: {step_name}" in line]
     assert step_lines, f"{workflow_path.name}: step {step_name!r} not found in workflow source"
-    
+
     # Find the start of the comment section after the step name
     start_idx = step_lines[0] + 1
     comments: list[str] = []
-    
+
     for i in range(start_idx, len(raw)):
         line = raw[i]
         if line.strip().startswith("#"):
@@ -73,7 +73,7 @@ def _get_step_comment_block(workflow_path: Path, step_name: str) -> str:
         else:
             # Reached another YAML property or new step, stop here
             break
-            
+
     return "\n".join(comments)
 
 
