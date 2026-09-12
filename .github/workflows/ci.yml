@@ -555,6 +555,8 @@ jobs:
     needs: ci-ok
     if: always() && github.event_name == 'pull_request'
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
       # INFRA-569：webhook payload 组装依赖 jq，自建 runner 不保证预装，兜底安装
       - uses: ./.github/actions/ensure-jq
 
