@@ -1,0 +1,91 @@
+name: Release announce
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  announce:
+    name: Announce release to broadcast endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify broadcast secrets
+        id: verify-secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${BROADCAST_URL:-}" ]; then
+            echo "::warning::RELEASE_BROADCAST_URL secret is not configured, skipping announcement"
+            echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${BROADCAST_TOKEN:-}" ]; then
+            echo "::warning::RELEASE_BROADCAST_TOKEN secret is not configured, skipping announcement"
+            echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "secrets_ok=true" >> "$GITHUB_OUTPUT"
+        env:
+          BROADCAST_URL: ${{ secrets.RELEASE_BROADCAST_URL }}
+          BROADCAST_TOKEN: ${{ secrets.RELEASE_BROADCAST_TOKEN }}
+
+      - name: Post release announcement
+        if: steps.verify-secrets.outputs.secrets_ok == 'true'
+        env:
+          BROADCAST_URL: ${{ secrets.RELEASE_BROADCAST_URL }}
+          BROADCAST_TOKEN: ${{ secrets.RELEASE_BROADCAST_TOKEN }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          TAG: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RAW_SHA: ${{ github.event.release.target_commitish }}
+          FALLBACK_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # SHA 兜底：target_commitish 可能是分支名（如 "main"），非 40-hex 时用 github.sha
+          if echo "$RAW_SHA" | grep -qE '^[0-9a-f]{40}$'; then
+            SHA="$RAW_SHA"
+          else
+            SHA="$FALLBACK_SHA"
+          fi
+
+          PAYLOAD=$(jq -nc \
+            --arg repo "$REPO" \
+            --arg tag "$TAG" \
+            --arg release_url "$RELEASE_URL" \
+            --arg sha "$SHA" \
+            '{repo:$repo, tag:$tag, release_url:$release_url, sha:$sha}')
+
+          # Cloudflare Access Service Token 头：secrets 已配置时注入，未配置时跳过（零行为变化）
+          CF_HEADER_ARGS=()
+          if [ -n "${CF_ACCESS_CLIENT_ID:-}" ] && [ -n "${CF_ACCESS_CLIENT_SECRET:-}" ]; then
+            CF_HEADER_ARGS=(-H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}")
+          fi
+
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --retry 3 --retry-delay 5 --retry-all-errors \
+            --max-time 30 \
+            -X POST "$BROADCAST_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Release-Token: ${BROADCAST_TOKEN}" \
+            "${CF_HEADER_ARGS[@]+"${CF_HEADER_ARGS[@]}"}" \
+            -d "$PAYLOAD") || HTTP_CODE="000"
+
+          if ! echo "$HTTP_CODE" | grep -qE '^2[0-9]{2}$'; then
+            echo "::warning::Release announcement failed (HTTP $HTTP_CODE for tag $TAG)"
+            if [ -n "${POSTHOG_API_KEY:-}" ]; then
+              TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              curl -s --max-time 10 -X POST "https://us.posthog.com/batch/" \
+                -H "Content-Type: application/json" \
+                -d "{\"api_key\":\"${POSTHOG_API_KEY}\",\"batch\":[{\"event\":\"release_announce_failed\",\"properties\":{\"error_type\":\"broadcast_delivery_failed\",\"tag\":\"$TAG\",\"repo\":\"$REPO\",\"stage\":\"github_actions\",\"workflow\":\"release-announce\",\"detail\":\"HTTP $HTTP_CODE\",\"run_url\":\"$RUN_URL\",\"distinct_id\":\"release-broadcast\"},\"timestamp\":\"$TIMESTAMP\"}]}" || true
+            else
+              echo "::notice::POSTHOG_API_KEY not configured, skipping event reporting"
+            fi
+          fi
+          exit 0

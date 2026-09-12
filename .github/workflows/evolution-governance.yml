@@ -1,0 +1,26 @@
+name: Evolution Governance
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - '.evolution/**'
+      - '.github/workflows/**'
+      - 'src/infra_core/engine/**'
+      - 'webhook-scripts/**'
+      - 'actions/**'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  governance:
+    name: Block non-owner governance modifications
+    runs-on: ubuntu-latest
+    steps:
+      - name: Governance check
+        uses: hdot123/infraro-core/actions/governance-check@main # v0.7.2 (PR #138)
+        with:
+          owner-login: hdot123
+          github-token: ${{ secrets.GITHUB_TOKEN }}
