@@ -65,6 +65,8 @@ jobs:
           fi
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -595,9 +597,13 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           GATEWAY_GW_TOKEN: ${{ secrets.GATEWAY_GW_TOKEN }}
-          WEBHOOK_NOTIFY_STRICT: ${{ vars.WEBHOOK_NOTIFY_STRICT || 'false' }}
+          WEBHOOK_NOTIFY_STRICT: ${{ vars.WEBHOOK_NOTIFY_STRICT }}
         run: |
           set -euo pipefail
+          if [ -z "$WEBHOOK_URL" ] || [ -z "$N8N_CI_TOKEN" ]; then
+            echo "::warning::webhook secrets not configured — skipping notification (bring-up phase)"
+            exit 0
+          fi
           PAYLOAD=$(jq -n \
             --arg repo "${{ github.repository }}" \
             --argjson pr_number "${{ github.event.pull_request.number || 0 }}" \

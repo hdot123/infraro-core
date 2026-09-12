@@ -66,7 +66,7 @@ def _declared_console_scripts() -> dict[str, str]:
 def _installed_console_scripts() -> dict[str, str]:
     """读取已安装发行版注册的 console scripts（entry_points 镜像）。"""
     scripts: dict[str, str] = {}
-    for ep in distribution("infraro-core").entry_points:
+    for ep in distribution("infra-core").entry_points:
         if ep.group == "console_scripts":
             scripts[ep.name] = ep.value
     return scripts
@@ -136,7 +136,7 @@ class TestPackEntryPointDiscovery:
         """infra_core.packs 组的 memory entry point 指向包模块。"""
         eps = {
             ep.name: ep.value
-            for ep in distribution("infraro-core").entry_points
+            for ep in distribution("infra-core").entry_points
             if ep.group == "infra_core.packs"
         }
         assert eps.get("memory") == "infra_core.packs.memory", (
