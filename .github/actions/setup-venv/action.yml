@@ -66,7 +66,7 @@ runs:
           # Install uv (0.12.7)
           if ! command -v uv >/dev/null; then
             echo "Installing uv..."
-            curl -LsSf https://astral.sh/uv/0.12.7/install.sh | sh
+            curl -LsSf --retry 3 --max-time 60 https://astral.sh/uv/0.12.7/install.sh | sh
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           fi
           
@@ -85,7 +85,7 @@ runs:
           # Install actionlint (1.7.11)
           if ! command -v actionlint >/dev/null; then
             echo "Installing actionlint..."
-            curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash /dev/stdin "1.7.11"
+            curl -fsSL --retry 3 --max-time 60 https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash | bash /dev/stdin "1.7.11"
             echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
           fi
           
@@ -94,7 +94,7 @@ runs:
             echo "Installing shellcheck..."
             if [[ "$OSTYPE" == "linux-gnu"* ]]; then
               mkdir -p "$RUNNER_TEMP/shellcheck"
-              curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz" | tar -xJ -C "$RUNNER_TEMP/shellcheck"
+              curl -fsSL --retry 3 --max-time 60 "https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz" | tar -xJ -C "$RUNNER_TEMP/shellcheck"
               cp "$RUNNER_TEMP/shellcheck/shellcheck-v0.10.0/shellcheck" "$RUNNER_TEMP/"
               chmod +x "$RUNNER_TEMP/shellcheck"
             fi
@@ -105,7 +105,7 @@ runs:
           if ! command -v jq >/dev/null; then
             echo "Installing jq..."
             if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-              curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64" -o "$RUNNER_TEMP/jq"
+              curl -fsSL --retry 3 --max-time 60 "https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64" -o "$RUNNER_TEMP/jq"
               chmod +x "$RUNNER_TEMP/jq"
             fi
             echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
@@ -156,7 +156,7 @@ runs:
           rm -rf "$VENV"
           python3 -m venv --without-pip "$VENV"
           if command -v curl >/dev/null; then
-            curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL \
+            curl --retry 3 --retry-delay 5 --retry-all-errors --max-time 60 -fsSL \
               -o "$RUNNER_TEMP/get-pip.py" https://bootstrap.pypa.io/get-pip.py
           else
             wget -q -O "$RUNNER_TEMP/get-pip.py" https://bootstrap.pypa.io/get-pip.py
