@@ -35,10 +35,6 @@ jobs:
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.DISPATCH_TOKEN }}
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: 0.12.7
 
       # ─── Release PR uv.lock relock（INFRA-712 根治）───
       # release-please 只 bump pyproject.toml 不 relock（PR #136 实证仅改
