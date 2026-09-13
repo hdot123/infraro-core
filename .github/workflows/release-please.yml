@@ -35,6 +35,11 @@ jobs:
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.DISPATCH_TOKEN }}
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: 0.12.7
+
       # ─── Release PR uv.lock relock（INFRA-712 根治）───
       # release-please 只 bump pyproject.toml 不 relock（PR #136 实证仅改
       # manifest/CHANGELOG/pyproject/__init__），uv.lock 根包版本原地踏步，
@@ -57,11 +62,6 @@ jobs:
           GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           set -euo pipefail
-
-          if ! command -v uv >/dev/null 2>&1; then
-            echo "::warning::uv not found on runner; skip relock (drift caught by repo_health_check.sh Check 1b)"
-            exit 0
-          fi
 
           # 按 autorelease: pending 标签定位当前 Release PR 分支；无
           # Release PR 开着（如纯 tag 发版轮）时本步无事可做。
