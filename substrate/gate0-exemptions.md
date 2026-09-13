@@ -13,8 +13,8 @@
 
 | Entry | Kind | Owner | Owning feature | Reason |
 |---|---|---|---|---|
-| `cf/` | exemption | hdot123 | engine-substrate-boundary | gh-proxy 部署面待 boundary 裁定（迁出或豁免区+扫描域扩展） |
-| `webhook-scripts/` | exemption | hdot123 | engine-substrate-boundary | 17 条目含宿主路径硬编码，待 boundary 清理裁定 |
+| `cf/` | exemption | hdot123 | engine-substrate-boundary | gh-proxy 部署面已落地豁免区（迁出或豁免区+扫描域扩展） |
+| `webhook-scripts/` | exemption | hdot123 | engine-substrate-boundary | 17 条目含宿主路径硬编码，已落地豁免区 |
 | `LICENSE` | exemption | hdot123 | - | 静态法律文本，无扫描域需要 |
 
 ## Gate 1: registered interface stock (declaration templates)
@@ -34,7 +34,8 @@
 | `residual branch: fix/INFRA-1037-silent-swallow-batch-3` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
 | `residual branch: fix/INFRA-1057-deduplicate-test_helpers` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
 | `in-flight OPEN PR #1273` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 在途 PR（INFRA-1057；清剿时随分支一并处置） |
-| `gate-tests advisory job missing on declaration main` | transient | hdot123 | substrate-gate-suite（本 suite） | 落地顺序性存量：声明仓 main 尚无 gate-tests advisory job，随声明仓 PR #5 合并自动清零 |
+| `in-flight OPEN PR #1275` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 在途 PR（INFRA-1060；清剿时随分支一并处置） |
+| `residual branch: fix/infra-1060-duplicate-make-git-repo` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
 | `missing from repositories.yml` | LOCAL-ONE | hdot123 | substrate-inventory-bookkeeping | 本地 registry 对账面（CI 不可见），声明仓待补登 |
 | `ERROR_REPO_MAP` | LOCAL-ONE | hdot123 | substrate-foundations-linear-webhook | Worker 路由双侧一致性为本地/私有面（hdot123/webhook 私有，CI token 不可读） |
 
