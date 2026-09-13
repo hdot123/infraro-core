@@ -571,18 +571,19 @@ jobs:
             "${{ github.event.pull_request.head.sha || github.sha }}" \
             "$GH_TOKEN"
 
-  # ─── substrate gates: advisory (job-level continue-on-error) ───
+  # ─── substrate gates: advisory (step-level continue-on-error) ───
   # 五道门先红着上线（substrate-gate-suite 裁定 2026-09-13）：门照常运行并
   # 如实输出红/绿；存量红项逐条登记于 substrate/gate0-exemptions.md
   # （owner + 归属 feature），由 declaration-template-interface-fix /
   # engine-substrate-boundary / legacy-repo-disposition / bookkeeping 清理；
   # 门转绿后由 misc feature 统一转正 required checks（解冻判据③）。
-  # job 级 continue-on-error: true → 结论记 success、步级红留日志——与
-  # ci-ok 零红聚合并存；刻意不进 ci-ok needs（存量红不得阻断合并）。
+  # 机械形态：continue-on-error: true 加在每个门步级——门红留在步日志、
+  # check-run 记 success（实证 run 34760620069：job 级 c-o-e 的 check-run
+  # 仍记 failure，故必须步级）；job 级刻意不加——checkout/venv 等 infra
+  # 失败保持红可见。刻意不进 ci-ok needs（存量红不得阻断合并）。
   gate-tests:
     name: substrate-gate-tests
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Workspace guard (sparse residue detox)
         run: |
@@ -606,20 +607,25 @@ jobs:
         uses: ./.github/actions/setup-venv
 
       - name: "Substrate gate 0: coverage completeness"
+        continue-on-error: true
         run: python substrate/gates/gate0_coverage.py
 
       - name: "Substrate gate 1: interface reality"
+        continue-on-error: true
         run: python substrate/gates/gate1_interface.py
 
       - name: "Substrate gate 2: cross-repo inspection"
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python substrate/gates/gate2_cross_repo.py
 
       - name: "Substrate gate 3: public exposure scan"
+        continue-on-error: true
         run: python substrate/gates/gate3_exposure.py
 
       - name: "Substrate gate 4: timing assertion + bootstrap dry-run"
+        continue-on-error: true
         run: python substrate/gates/gate4_timing_bootstrap.py
 
   # ─── notify-ci-complete: webhook (CF Worker) → trigger-ci-droid.sh ───

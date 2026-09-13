@@ -134,6 +134,7 @@ ignore = ["DEP002"]
 [tool.deptry.per_rule_ignores]
 DEP001 = [
     "guard_cli",
+    "gate_common",
     "evolution_scanner",
     "evolution_utils",
     "evolution_adapters",

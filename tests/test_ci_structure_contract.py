@@ -194,8 +194,10 @@ class TestAdvisorySemantics:
 class TestSubstrateGates:
     """substrate 五道门 advisory 契约（substrate-gate-suite，2026-09-13）。
 
-    「门先红着上线」的机械形态：gate-tests job 级 continue-on-error: true——
-    步级红保留在日志、job 结论恒 success，不阻断合并、不进 required checks。
+    「门先红着上线」的机械形态：五个门步各自步级 continue-on-error: true——
+    步级红保留在日志、check-run 记 success，不阻断合并、不进 required
+    checks（实证 run 34760620069：job 级 c-o-e 的 check-run 仍记 failure，
+    故必须步级；job 级 c-o-e 禁止——infra 失败保持红可见）。
     存量红项逐条登记于 substrate/gate0-exemptions.md（owner + 归属 feature），
     由后续 feature 清理；门转绿后由 misc feature 统一转正（解冻判据③）。
     注意与 advisory-bundle 的零红铁律（TestAdvisorySemantics）区分：那是
@@ -203,13 +205,29 @@ class TestSubstrateGates:
     语义各自有契约锁定，互不混用。
     """
 
-    def test_gate_job_is_advisory_non_blocking(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
-        """gate-tests 必须 job 级 continue-on-error: true（先红着上线裁定）。"""
+    def test_gate_job_has_no_job_level_continue_on_error(
+        self, ci_jobs: dict[str, dict[str, Any]]
+    ) -> None:
+        """gate-tests 禁止 job 级 continue-on-error（infra 失败保持红可见）。"""
         gate = ci_jobs["gate-tests"]
-        assert gate.get("continue-on-error") is True, (
-            "gate-tests 必须 continue-on-error: true（advisory 门不阻断合并；"
-            "存量清完转正时由 misc feature 移除此行并同步本契约）"
+        assert gate.get("continue-on-error") is None, (
+            "gate-tests 不得设置 job 级 continue-on-error（checkout/venv 等 "
+            "infra 失败必须红可见；advisory 只加在门步级）"
         )
+
+    def test_gate_steps_are_step_level_advisory(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
+        """五个门步全部步级 continue-on-error: true（先红着上线裁定）。"""
+        steps = [
+            s
+            for s in ci_jobs["gate-tests"].get("steps") or []
+            if "gate" in str(s.get("name", "")).lower()
+        ]
+        assert len(steps) == 5, f"应有 5 个门步，found {len(steps)}"
+        for step in steps:
+            assert step.get("continue-on-error") is True, (
+                f"门步「{step.get('name')}」必须步级 continue-on-error: true"
+                "（存量红留日志、check-run 记 success；转正时由 misc feature 拆除）"
+            )
 
     def test_gate_job_not_in_ci_ok_needs(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
         """gate-tests 刻意不进 ci-ok needs（存量红不得阻断合并）。"""

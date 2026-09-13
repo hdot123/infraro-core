@@ -48,6 +48,10 @@ def scan_patterns(path: Path) -> list[tuple[str, int, str]]:
     rel = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
     if any(rel.startswith(prefix) or f"/{prefix}/" in rel for prefix in SCAN_EXCLUDED_DIRS):
         return []
+    if rel == "substrate/gate0-exemptions.md":
+        # The registry quotes stock identifiers verbatim by design; its rows
+        # ARE the registrations, so scanning it would double-count itself.
+        return []
     try:
         raw = path.read_bytes()
     except OSError:

@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 class TestZeroRedScript:
@@ -182,6 +183,11 @@ class TestZeroRedPolicy:
         post-masking value (always "success"), making the ci-ok gate a no-op
         (proven in run 33129232081). Zero-red requires red check-runs.
         2026-08-29 bundle 化：advisory-bundle 为三 advisory 的零红载体。
+
+        substrate-gate-suite 例外（2026-09-13，先红着上线裁定）：gate-tests
+        的五个门步允许步级 continue-on-error——存量红留在步日志、check-run
+        记 success、不阻断合并；job 级 c-o-e 仍然全面禁止（infra 失败保持
+        红可见）。门转绿转正 required checks 时由 misc feature 一并拆除。
         """
         ci_yml = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
         content = ci_yml.read_text()
@@ -189,10 +195,24 @@ class TestZeroRedPolicy:
         # Advisory bundle must exist
         assert "advisory-bundle:" in content, "Should have advisory-bundle job"
 
-        # No job-level continue-on-error anywhere: failures must stay red
-        continue_on_error_count = content.count("continue-on-error: true")
-        assert continue_on_error_count == 0, (
-            f"Expected 0 continue-on-error: true (zero-red: INFRA-595), found {continue_on_error_count}"
+        jobs = yaml.safe_load(content)["jobs"]
+        gate_job = "gate-tests"
+        gate_steps = 0
+        for name, job in jobs.items():
+            assert not job.get("continue-on-error"), (
+                f"job {name} 不得设置 job 级 continue-on-error（零红铁律；"
+                "job 级 c-o-e 的 check-run 仍记 failure 且掩蔽 infra 红）"
+            )
+            for step in job.get("steps") or []:
+                if step.get("continue-on-error"):
+                    assert name == gate_job, (
+                        f"步级 continue-on-error 仅允许出现在 {gate_job} 的门步：{name}"
+                    )
+                    gate_steps += 1
+
+        # 先红着上线裁定在场：五个门步全部步级 advisory
+        assert gate_steps == 5, (
+            f"gate-tests 应有 5 个步级 continue-on-error 门步（先红着上线），found {gate_steps}"
         )
 
 

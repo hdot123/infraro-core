@@ -34,6 +34,7 @@
 | `residual branch: fix/INFRA-1037-silent-swallow-batch-3` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
 | `residual branch: fix/INFRA-1057-deduplicate-test_helpers` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
 | `in-flight OPEN PR #1273` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 在途 PR（INFRA-1057；清剿时随分支一并处置） |
+| `gate-tests advisory job missing on declaration main` | transient | hdot123 | substrate-gate-suite（本 suite） | 落地顺序性存量：声明仓 main 尚无 gate-tests advisory job，随声明仓 PR #5 合并自动清零 |
 | `missing from repositories.yml` | LOCAL-ONE | hdot123 | substrate-inventory-bookkeeping | 本地 registry 对账面（CI 不可见），声明仓待补登 |
 | `ERROR_REPO_MAP` | LOCAL-ONE | hdot123 | substrate-foundations-linear-webhook | Worker 路由双侧一致性为本地/私有面（hdot123/webhook 私有，CI token 不可读） |
 
@@ -53,7 +54,7 @@ mencbo 清洁、memory 残留 2 分支（上行登记）。legacy-repo-dispositi
 | `CHANGELOG.md` | runner-topology | hdot123 | - | 历史发版条目中的 node-00 提及（历史事实，不改写） |
 | `scripts/check_boundary.py` | self-reference | hdot123 | - | BOUNDARY guard 自身的规则正则字面量（与 check_boundary 的自豁免同构） |
 | `src/infra_core/engine/evolution_adapters.py` | local-path | hdot123 | engine-substrate-boundary | docstring 注释中的宿主路径提及（ transplant 注释） |
-| `substrate/gates/` | self-reference | substrate-gate-suite | - | 扫描器自身正则字面量（gate3 扫描自排除，此处登记备案） |
+| `substrate/gates/` + gate0-exemptions.md | self-reference | substrate-gate-suite | - | 扫描器自身正则字面量 + 存量表原文引用（gate3 扫描自排除，此处登记备案） |
 
 ## Gate 4
 
