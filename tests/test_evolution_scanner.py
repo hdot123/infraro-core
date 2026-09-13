@@ -511,12 +511,9 @@ def test_normalize_location():
     assert normalize_location("/home/user/memory/README.md") == "README.md"
     # Dot-prefixed dirs through absolute path normalization
     assert (
-        normalize_location("/path/to/memory/.github/workflows/ci.yml")
-        == ".github/workflows/ci.yml"
+        normalize_location("/path/to/memory/.github/workflows/ci.yml") == ".github/workflows/ci.yml"
     )
-    assert (
-        normalize_location("/path/to/memory/.evolution/config.yml") == ".evolution/config.yml"
-    )
+    assert normalize_location("/path/to/memory/.evolution/config.yml") == ".evolution/config.yml"
 
     # Absolute paths with /memory-core/ marker
     assert (

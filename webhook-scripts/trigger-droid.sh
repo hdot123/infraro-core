@@ -1041,7 +1041,7 @@ print(json.dumps({
         # Clean stale "planning" state missions for this working directory.
         # Crashed --mission exec attempts leave orphaned mission dirs that never
         # progressed past planning; these accumulate and can interfere with new sessions.
-        for _mission_sf in "${HOME}/.factory/missions/*/state.json"; do
+        for _mission_sf in "${HOME}"/.factory/missions/*/state.json; do
             [ -f "$_mission_sf" ] || continue
             if python3 -c "
 import json,sys
