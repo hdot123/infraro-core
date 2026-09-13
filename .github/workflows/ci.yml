@@ -571,6 +571,63 @@ jobs:
             "${{ github.event.pull_request.head.sha || github.sha }}" \
             "$GH_TOKEN"
 
+  # ─── substrate gates: advisory (step-level continue-on-error) ───
+  # 五道门先红着上线（substrate-gate-suite 裁定 2026-09-13）：门照常运行并
+  # 如实输出红/绿；存量红项逐条登记于 substrate/gate0-exemptions.md
+  # （owner + 归属 feature），由 declaration-template-interface-fix /
+  # engine-substrate-boundary / legacy-repo-disposition / bookkeeping 清理；
+  # 门转绿后由 misc feature 统一转正 required checks（解冻判据③）。
+  # 机械形态：continue-on-error: true 加在每个门步级——门红留在步日志、
+  # check-run 记 success（实证 run 34760620069：job 级 c-o-e 的 check-run
+  # 仍记 failure，故必须步级）；job 级刻意不加——checkout/venv 等 infra
+  # 失败保持红可见。刻意不进 ci-ok needs（存量红不得阻断合并）。
+  gate-tests:
+    name: substrate-gate-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workspace guard (sparse residue detox)
+        run: |
+          set -euo pipefail
+          # 2026-08-28 污染事故运行时排毒：共享持久 _work 工作区的 sparse 残留
+          # 使 checkout 自带的 sparse-checkout disable 无法恢复被裁剪的工作树
+          # （实证：disable 后仍缺 .github/actions/setup-venv）。本步在
+          # checkout 前检测残留并删除 .git 强制全新克隆；必须内联 run——
+          # 工作树残缺时本地 composite action 同样无法解析。
+          if [ -e "$GITHUB_WORKSPACE/.git" ]; then
+            SPARSE_FLAG=$(git -C "$GITHUB_WORKSPACE" config --type=bool --get core.sparseCheckout 2>/dev/null || echo false)
+            if [ "$SPARSE_FLAG" = "true" ] || [ ! -f "$GITHUB_WORKSPACE/.github/actions/setup-venv/action.yml" ]; then
+              echo "::warning::Workspace has sparse/prune residue; removing .git for a clean re-clone"
+              rm -rf "$GITHUB_WORKSPACE/.git"
+            fi
+          fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup venv (per-run isolation)
+        uses: ./.github/actions/setup-venv
+
+      - name: "Substrate gate 0: coverage completeness"
+        continue-on-error: true
+        run: python substrate/gates/gate0_coverage.py
+
+      - name: "Substrate gate 1: interface reality"
+        continue-on-error: true
+        run: python substrate/gates/gate1_interface.py
+
+      - name: "Substrate gate 2: cross-repo inspection"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python substrate/gates/gate2_cross_repo.py
+
+      - name: "Substrate gate 3: public exposure scan"
+        continue-on-error: true
+        run: python substrate/gates/gate3_exposure.py
+
+      - name: "Substrate gate 4: timing assertion + bootstrap dry-run"
+        continue-on-error: true
+        run: python substrate/gates/gate4_timing_bootstrap.py
+
   # ─── notify-ci-complete: webhook (CF Worker) → trigger-ci-droid.sh ───
   # Mirrors memory repo ci.yml:318-377 (INFRA-569). Without this job,
   # infra-core CI completion never notifies the webhook gateway, breaking the
@@ -579,11 +636,13 @@ jobs:
   # NOTE: qa.yml's qa-ok is NOT covered by this job's needs (GitHub
   # cross-workflow dependencies are not supported). This matches the
   # memory repo's structural limitation.
+  # needs gate-tests too（substrate-gate-suite）：通知前等 advisory 门跑完，
+  # status 判定仍只取 ci-ok（gate-tests advisory 恒 success，不影响红绿语义）。
   notify-ci-complete:
     name: Notify CI complete to webhook gateway
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: ci-ok
+    needs: [ci-ok, gate-tests]
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Workspace guard (sparse residue detox)

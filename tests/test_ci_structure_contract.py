@@ -28,9 +28,10 @@ pytestmark = pytest.mark.schema
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CI_YML = REPO_ROOT / ".github/workflows/ci.yml"
 
-# 11 个 job 的完整集合（19 → 10 容量收敛，2026-08-29；+1 notify-ci-complete
-# webhook 注入，INFRA-569；快照只对齐当前 main：后续 ci.yml 变更由各自 feature
-# 同步本表）
+# 12 个 job 的完整集合（19 → 10 容量收敛，2026-08-29；+1 notify-ci-complete
+# webhook 注入，INFRA-569；+1 gate-tests advisory 门（substrate-gate-suite，
+# 2026-09-13）：五道门先红着上线，job 级 continue-on-error 非阻断；快照只对齐
+# 当前 main：后续 ci.yml 变更由各自 feature 同步本表）
 EXPECTED_JOBS = frozenset(
     {
         # 聚合锚点（命名契约：不可重命名，见 architecture.md §2）
@@ -49,13 +50,21 @@ EXPECTED_JOBS = frozenset(
         "ci-ok",
         # CI 完成 webhook 通知（INFRA-569：对齐 memory 仓同构 job）
         "notify-ci-complete",
+        # substrate 五道门 advisory（substrate-gate-suite：存量红不阻断合并）
+        "gate-tests",
     }
 )
 
 ADVISORY_JOBS = frozenset({"advisory-bundle"})
+# substrate 五道门：advisory 门 job（job 级 continue-on-error，步级红留日志、
+# 结论恒 success）。与 advisory-bundle 的零红铁律语义不同——这是 substrate-
+# gate-suite 的「先红着上线」裁定：门红如实暴露存量（登记于
+# substrate/gate0-exemptions.md）但不阻断合并；存量清完后由 misc feature
+# 统一转正 required checks（解冻判据③）。刻意不进 ci-ok needs。
+GATE_JOBS = frozenset({"gate-tests"})
 # notify-ci-complete is a downstream notification job (needs ci-ok, not the
 # other way around), so exclude it from BLOCKING_JOBS.
-BLOCKING_JOBS = EXPECTED_JOBS - ADVISORY_JOBS - {"ci-ok", "notify-ci-complete"}
+BLOCKING_JOBS = EXPECTED_JOBS - ADVISORY_JOBS - GATE_JOBS - {"ci-ok", "notify-ci-complete"}
 
 # 独立专项测试组 → marker
 TEST_GROUP_MARKERS = {
@@ -182,6 +191,64 @@ class TestAdvisorySemantics:
         )
 
 
+class TestSubstrateGates:
+    """substrate 五道门 advisory 契约（substrate-gate-suite，2026-09-13）。
+
+    「门先红着上线」的机械形态：五个门步各自步级 continue-on-error: true——
+    步级红保留在日志、check-run 记 success，不阻断合并、不进 required
+    checks（实证 run 34760620069：job 级 c-o-e 的 check-run 仍记 failure，
+    故必须步级；job 级 c-o-e 禁止——infra 失败保持红可见）。
+    存量红项逐条登记于 substrate/gate0-exemptions.md（owner + 归属 feature），
+    由后续 feature 清理；门转绿后由 misc feature 统一转正（解冻判据③）。
+    注意与 advisory-bundle 的零红铁律（TestAdvisorySemantics）区分：那是
+    「advisory 红必须阻断」，这是「门红如实暴露存量但不阻断」——两种 advisory
+    语义各自有契约锁定，互不混用。
+    """
+
+    def test_gate_job_has_no_job_level_continue_on_error(
+        self, ci_jobs: dict[str, dict[str, Any]]
+    ) -> None:
+        """gate-tests 禁止 job 级 continue-on-error（infra 失败保持红可见）。"""
+        gate = ci_jobs["gate-tests"]
+        assert gate.get("continue-on-error") is None, (
+            "gate-tests 不得设置 job 级 continue-on-error（checkout/venv 等 "
+            "infra 失败必须红可见；advisory 只加在门步级）"
+        )
+
+    def test_gate_steps_are_step_level_advisory(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
+        """五个门步全部步级 continue-on-error: true（先红着上线裁定）。"""
+        steps = [
+            s
+            for s in ci_jobs["gate-tests"].get("steps") or []
+            if "gate" in str(s.get("name", "")).lower()
+        ]
+        assert len(steps) == 5, f"应有 5 个门步，found {len(steps)}"
+        for step in steps:
+            assert step.get("continue-on-error") is True, (
+                f"门步「{step.get('name')}」必须步级 continue-on-error: true"
+                "（存量红留日志、check-run 记 success；转正时由 misc feature 拆除）"
+            )
+
+    def test_gate_job_not_in_ci_ok_needs(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
+        """gate-tests 刻意不进 ci-ok needs（存量红不得阻断合并）。"""
+        needs = set(ci_jobs["ci-ok"].get("needs") or [])
+        assert "gate-tests" not in needs, (
+            "gate-tests 不得进 ci-ok needs（advisory 门红不阻断；转正时才加入）"
+        )
+
+    def test_gate_job_runs_all_five_gates(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
+        """五道门脚本全部在场（substrate/gates/ 门0-门4，迁出 tests/ 后路径）。"""
+        script = _job_run_script(ci_jobs, "gate-tests")
+        for gate in (
+            "gate0_coverage",
+            "gate1_interface",
+            "gate2_cross_repo",
+            "gate3_exposure",
+            "gate4_timing_bootstrap",
+        ):
+            assert f"substrate/gates/{gate}.py" in script, f"gate-tests 缺 {gate}"
+
+
 class TestNotifyCiComplete:
     """notify-ci-complete webhook 通知契约（INFRA-690）。
 
@@ -197,7 +264,10 @@ class TestNotifyCiComplete:
         job = ci_jobs["notify-ci-complete"]
         raw_needs = job.get("needs")
         needs = {raw_needs} if isinstance(raw_needs, str) else set(raw_needs or [])
-        assert needs == {"ci-ok"}, "notify-ci-complete 必须 needs ci-ok（聚合后通知）"
+        assert needs == {"ci-ok", "gate-tests"}, (
+            "notify-ci-complete 必须 needs [ci-ok, gate-tests]（聚合后通知，"
+            "含 substrate advisory 门跑完再通知）"
+        )
         assert job.get("if") == "always() && github.event_name == 'pull_request'"
 
     def test_payload_includes_status_and_run_url(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
