@@ -579,11 +579,36 @@ jobs:
   # NOTE: qa.yml's qa-ok is NOT covered by this job's needs (GitHub
   # cross-workflow dependencies are not supported). This matches the
   # memory repo's structural limitation.
+  gate-tests:
+    name: substrate-gate-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup venv (per-run isolation)
+        uses: ./.github/actions/setup-venv
+
+      - name: Run Gate 0 - Coverage Completeness
+        run: python tests/test_gate_coverage_completeness.py
+
+      - name: Run Gate 1 - Interface Reality
+        run: python tests/test_gate_interface_reality.py
+
+      - name: Run Gate 2 - Cross-repo Inspection
+        run: python tests/test_gate_cross_repo_inspection.py
+
+      - name: Run Gate 3 - Public Exposure Scan
+        run: python tests/test_gate_public_exposure.py
+
+      - name: Run Gate 4 - Timing Assertion and Bootstrap
+        run: python tests/test_gate_timing_bootstrap.py
+
   notify-ci-complete:
     name: Notify CI complete to webhook gateway
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: ci-ok
+    needs: [ci-ok, gate-tests]
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Workspace guard (sparse residue detox)

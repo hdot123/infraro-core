@@ -1,0 +1,31 @@
+name: Gate 2 - Cross-repository Inspection Cron
+
+on:
+  schedule:
+    # Run every hour at minute 15 (avoiding :00/:30 peaks as per requirement)
+    - cron: '15 * * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  cross-repo-inspection:
+    name: Cross-repository Inspection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Run Gate 2 - Cross-repository Inspection
+        run: python tests/test_gate_cross_repo_inspection.py
