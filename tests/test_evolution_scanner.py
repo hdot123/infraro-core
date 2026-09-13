@@ -440,7 +440,7 @@ def test_adapt_daily_audit():
         "audit_date": "2026-08-08",
         "projects": {
             "memory": {
-                "path": "/Users/busiji/memory",
+                "path": "/path/to/memory",
                 "violations": [
                     {
                         "type": "hash_mismatch",
@@ -503,20 +503,17 @@ def test_normalize_location():
     assert normalize_location("./.evolution/config.yml") == ".evolution/config.yml"
 
     # Absolute paths with /memory/ marker (local development)
-    assert normalize_location("/Users/busiji/memory/tests/test_foo.py") == "tests/test_foo.py"
+    assert normalize_location("/path/to/memory/tests/test_foo.py") == "tests/test_foo.py"
     assert (
-        normalize_location("/Users/busiji/memory/scripts/evolution_adapters.py")
+        normalize_location("/path/to/memory/scripts/evolution_adapters.py")
         == "scripts/evolution_adapters.py"
     )
     assert normalize_location("/home/user/memory/README.md") == "README.md"
     # Dot-prefixed dirs through absolute path normalization
     assert (
-        normalize_location("/Users/busiji/memory/.github/workflows/ci.yml")
-        == ".github/workflows/ci.yml"
+        normalize_location("/path/to/memory/.github/workflows/ci.yml") == ".github/workflows/ci.yml"
     )
-    assert (
-        normalize_location("/Users/busiji/memory/.evolution/config.yml") == ".evolution/config.yml"
-    )
+    assert normalize_location("/path/to/memory/.evolution/config.yml") == ".evolution/config.yml"
 
     # Absolute paths with /memory-core/ marker
     assert (
@@ -545,7 +542,7 @@ def test_adapt_consistency_check():
             "[init_validate_roundtrip] init_project_memory failed: ",
         ],
         "warnings": [
-            "[docstring_host_mentions] /Users/busiji/memory/tests/test_hook_event.py: docstring mentions codex and claude but not factory",
+            "[docstring_host_mentions] /path/to/memory/tests/test_hook_event.py: docstring mentions codex and claude but not factory",
         ],
         "checks": [
             {
@@ -587,7 +584,7 @@ def test_adapt_error_patterns():
             "last_seen": "2026-06-02T23:57:06.732633+08:00",
             "distinct_days": ["2026-06-02"],
             "total_count": 1,
-            "projects": ["/Users/busiji/memory"],
+            "projects": ["/path/to/memory"],
             "threshold_met": None,  # Not threshold yet
         },
         {
@@ -4565,7 +4562,7 @@ def test_adapt_audit_layout():
             {
                 "type": "DAILY_KB_STALE",
                 "severity": "warning",
-                "file": "/Users/busiji/memory/kb/test.md",  # Absolute path
+                "file": "/path/to/memory/kb/test.md",  # Absolute path
                 "detail": "KB entries stale",
             },
             {

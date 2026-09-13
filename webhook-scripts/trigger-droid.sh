@@ -17,9 +17,9 @@ TEAM_KEY="${5:-}"
 ISSUE_TITLE="${6:-}"
 
 # === 配置 ===
-WEBHOOK_BASE="/Users/busiji/.factory/webhook"
+WEBHOOK_BASE="${WEBHOOK_BASE:-${HOME}/.factory/webhook}"
 LOG_DIR="${WEBHOOK_BASE}/logs"
-REPO_CONFIG="/Users/busiji/.factory/config/repositories.yml"
+REPO_CONFIG="${REPO_CONFIG:-${HOME}/.factory/config/repositories.yml}"
 
 # === 日志 ===
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -1041,7 +1041,7 @@ print(json.dumps({
         # Clean stale "planning" state missions for this working directory.
         # Crashed --mission exec attempts leave orphaned mission dirs that never
         # progressed past planning; these accumulate and can interfere with new sessions.
-        for _mission_sf in /Users/busiji/.factory/missions/*/state.json; do
+        for _mission_sf in "${HOME}"/.factory/missions/*/state.json; do
             [ -f "$_mission_sf" ] || continue
             if python3 -c "
 import json,sys

@@ -31,10 +31,10 @@ else
 fi
 
 # === 配置 ===
-WEBHOOK_BASE="/Users/busiji/.factory/webhook"
+WEBHOOK_BASE="${WEBHOOK_BASE:-${HOME}/.factory/webhook}"
 LOG_DIR="${WEBHOOK_BASE}/logs"
 LOCK_DIR="${WEBHOOK_BASE}/locks"
-REPO_CONFIG="/Users/busiji/.factory/config/repositories.yml"
+REPO_CONFIG="${REPO_CONFIG:-${HOME}/.factory/config/repositories.yml}"
 
 # === 日志 ===
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)

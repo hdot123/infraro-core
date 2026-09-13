@@ -54,10 +54,10 @@ REAL_ERRORS = _load_real_errors()
 
 class TestNormalizePaths:
     def test_absolute_path_replaced(self) -> None:
-        msg = "failed to open /Users/busiji/memory/log/foo.jsonl for reading"
+        msg = "failed to open /path/to/memory/log/foo.jsonl for reading"
         result = normalize_error_msg(msg)
         assert "<PATH>" in result
-        assert "/Users/busiji/memory/log/foo.jsonl" not in result
+        assert "/path/to/memory/log/foo.jsonl" not in result
 
     def test_relative_path_replaced(self) -> None:
         msg = "cannot read memory/log/foo.jsonl"
@@ -277,7 +277,7 @@ class TestGroupByFingerprint:
         msg: str,
         error_type: str = "llm_api_error",
         script: str = "daily_summary_generator",
-        project: str = "/Users/busiji/memory",
+        project: str = "/path/to/memory",
     ) -> dict[str, Any]:
         return {"ts": ts, "type": error_type, "script": script, "project": project, "msg": msg}
 
@@ -430,7 +430,7 @@ class TestGroupByFingerprint:
         assert group.status == "detected"
 
     def test_samples_preserve_raw_msg(self) -> None:
-        raw_msg = "error in /Users/busiji/memory/log/test.py at 2026-07-12T11:07:05+08:00"
+        raw_msg = "error in /path/to/memory/log/test.py at 2026-07-12T11:07:05+08:00"
         entries = [self._make_entry("2026-07-12T09:00:00+08:00", raw_msg)]
         groups = group_by_fingerprint(entries)
         group = list(groups.values())[0]
@@ -1257,7 +1257,7 @@ class TestRealDataEndToEnd:
     def test_real_data_full_pipeline(self, tmp_path: Path) -> None:
         """Full pipeline on real error data."""
         # Use the actual memory project
-        memory_root = Path("/Users/busiji/memory")
+        memory_root = Path("/path/to/memory")
         if not memory_root.exists():
             pytest.skip("Memory project not found")
 
@@ -1296,7 +1296,7 @@ class TestRealDataEndToEnd:
     @pytest.mark.skipif(not REAL_ERRORS, reason="No real error data found")
     def test_real_data_curl_pattern_exists(self, tmp_path: Path) -> None:
         """Real data should contain the curl blank-arg pattern."""
-        memory_root = Path("/Users/busiji/memory")
+        memory_root = Path("/path/to/memory")
         if not memory_root.exists():
             pytest.skip("Memory project not found")
 
@@ -1331,7 +1331,7 @@ class TestTestArtifactFiltering:
             "ts": "2026-07-24T09:37:47+08:00",
             "type": "transcript_missing",
             "script": "session_end_logger",
-            "project": "/Users/busiji/memory",
+            "project": "/path/to/memory",
             "msg": msg,
             "ctx": ctx if ctx is not None else {},
         }
@@ -1409,8 +1409,8 @@ class TestTestArtifactFiltering:
         """A real-looking entry with UUID session_id and ~/.factory path passes."""
         entry = self._make_entry(
             session_id="a1b2c3d4",
-            expected_path="/Users/busiji/.factory/sessions/-Users-busiji-memory/a1b2c3d4.jsonl",
-            msg="transcript not found: /Users/busiji/.factory/sessions/-Users-busiji-memory/a1b2c3d4.jsonl",
+            expected_path="/path/to/.factory/sessions/-path-to-memory/a1b2c3d4.jsonl",
+            msg="transcript not found: /path/to/.factory/sessions/-path-to-memory/a1b2c3d4.jsonl",
         )
         assert _is_test_artifact(entry) is False
 

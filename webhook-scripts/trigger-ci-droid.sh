@@ -27,7 +27,7 @@ STATUS="${4:-}"
 REPO_SLUG_ARG="${5:-${CI_REPO:-}}"
 
 # === 配置（VAL-INJ-010: LOG_FILE 赋值先于任何 send_posthog_event）===
-WEBHOOK_BASE="${WEBHOOK_BASE:-/Users/busiji/.factory/webhook}"
+WEBHOOK_BASE="${WEBHOOK_BASE:-${HOME}/.factory/webhook}"
 LOG_DIR="${WEBHOOK_BASE}/logs"
 LOCK_DIR="${LOCK_DIR:-${WEBHOOK_BASE}/locks}"
 SESSIONS_INDEX="${SESSIONS_INDEX:-${HOME}/.factory/sessions-index.json}"

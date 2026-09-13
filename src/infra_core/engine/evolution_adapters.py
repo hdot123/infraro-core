@@ -23,7 +23,7 @@ def normalize_location(location: str) -> str:
         return location.removeprefix("./")
     # Try to find repo-relative portion after known markers
     # CI patterns: /Users/runner/work/{repo}/{repo}/... or /home/runner/work/{repo}/{repo}/...
-    # Local patterns: /Users/busiji/memory/... or any path containing /memory/ or /memory-core/
+    # Local patterns: Local paths containing /memory/ or /memory-core/ (placeholder)
     for marker in ("/memory-core/", "/memory/"):
         idx = location.rfind(marker)  # Use rfind to get the LAST occurrence
         if idx != -1:
