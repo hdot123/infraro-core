@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.19.0](https://github.com/hdot123/infraro-core/compare/v0.18.4...v0.19.0) (2026-09-13)
+
+
+### Features
+
+* add version gate to shellcheck Layer-1 step mirroring actionlint ([#7](https://github.com/hdot123/infraro-core/issues/7)) ([8a0476f](https://github.com/hdot123/infraro-core/commit/8a0476f4087b4cda9646a08199fa30bcfc76e8a5))
+* import engine at 0.18.4 baseline with personal-account rewiring ([#2](https://github.com/hdot123/infraro-core/issues/2)) ([3695445](https://github.com/hdot123/infraro-core/commit/3695445b1d8df8997de35d39256ffe596d229c8c))
+* update governance contract tests to match v3 expectations ([#5](https://github.com/hdot123/infraro-core/issues/5)) ([1f4a458](https://github.com/hdot123/infraro-core/commit/1f4a458fa0b2282e88543f53faf4444039b2ce0f))
+
+
+### Bug Fixes
+
+* Apply F2 CI fixes round 3 ([#3](https://github.com/hdot123/infraro-core/issues/3)) ([9a7b1a7](https://github.com/hdot123/infraro-core/commit/9a7b1a79577eff38bc97b7b7f64f73e10c87c35d))
+* fetch-depth 0 for QA full-history contract tests ([#6](https://github.com/hdot123/infraro-core/issues/6)) ([cbd4af9](https://github.com/hdot123/infraro-core/commit/cbd4af9264f3130f689ebe1c10fb43eacb11d83c))
+
 ## [0.18.3](https://github.com/hdot123/infraro-core/compare/v0.18.2...v0.18.3) (2026-09-11)
 
 
