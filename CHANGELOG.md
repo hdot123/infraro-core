@@ -5,6 +5,14 @@
 
 ### Features
 
+* engine-substrate-boundary - desensitize IP whitelists and host paths ([#26](https://github.com/hdot123/infraro-core/issues/26)) ([0c92d34](https://github.com/hdot123/infraro-core/commit/0c92d34bbe44dc943a42362d1e340d833b9e31ab))
+* substrate gate suite (0-4) for engine repository ([#21](https://github.com/hdot123/infraro-core/issues/21)) ([7a82aef](https://github.com/hdot123/infraro-core/commit/7a82aefbaed732124ee6681902c50788d376c2cd))
+
+## [0.18.4](https://github.com/hdot123/infraro-core/compare/v0.18.4...v0.18.4) (2026-09-13)
+
+
+### Features
+
 * add version gate to shellcheck Layer-1 step mirroring actionlint ([#7](https://github.com/hdot123/infraro-core/issues/7)) ([8a0476f](https://github.com/hdot123/infraro-core/commit/8a0476f4087b4cda9646a08199fa30bcfc76e8a5))
 * import engine at 0.18.4 baseline with personal-account rewiring ([#2](https://github.com/hdot123/infraro-core/issues/2)) ([3695445](https://github.com/hdot123/infraro-core/commit/3695445b1d8df8997de35d39256ffe596d229c8c))
 * update governance contract tests to match v3 expectations ([#5](https://github.com/hdot123/infraro-core/issues/5)) ([1f4a458](https://github.com/hdot123/infraro-core/commit/1f4a458fa0b2282e88543f53faf4444039b2ce0f))
