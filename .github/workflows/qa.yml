@@ -95,7 +95,7 @@ jobs:
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -253,7 +253,7 @@ jobs:
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv

@@ -477,7 +477,7 @@ class TestRulesetsExistence:
     reason="gh CLI 不可用或无凭证（CI 设计内降级）",
 )
 class TestRulesetsFiveRuleTypes:
-    """VAL-M3-014: 五类规则齐全且参数正确。"""
+    """VAL-M3-014: 三类规则齐全且参数正确。"""
 
     def test_required_status_checks_parameters(self):
         """required_status_checks should be empty (as per v3 contract)."""
@@ -688,7 +688,7 @@ class TestF8StaticAnchors:
         )
 
     def test_required_status_checks_anchor(self) -> None:
-        """required_status_checks 锚点 = {(ci-ok, 15368), (qa-ok, 15368)}。"""
+        """required_status_checks 锚点 = {} (empty set)。"""
         assert _F8_RSC_CHECKS_ANCHOR == set(), (
             f"required_status_checks 锚点被修改: {sorted(_F8_RSC_CHECKS_ANCHOR)} — "
             "删 check（如 qa-ok）会静默拆掉 merge 门禁"
