@@ -1,5 +1,12 @@
 name: Gate 2 - Cross-repository Inspection Cron
 
+# substrate 五道门·门2（substrate-gate-suite）：跨仓 cron 巡检。
+# 巡检面 = GitHub 可见面（gh api + GITHUB_TOKEN）：冻结仓 open PR / 残留分支、
+# 声明仓 substrate workflow 在场性；本地 registry 面（repositories.yml /
+# ERROR_REPO_MAP）runner 上无 ~/.factory，自动降级 LOCAL-ONE。
+# advisory 语义：本 workflow 独立于 ci.yml，红不阻断任何 PR 合并；存量登记于
+# substrate/gate0-exemptions.md（owner + 归属 feature）。
+
 on:
   schedule:
     # Run every hour at minute 15 (avoiding :00/:30 peaks as per requirement)
@@ -15,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
 
@@ -28,4 +35,6 @@ jobs:
           pip install pyyaml
 
       - name: Run Gate 2 - Cross-repository Inspection
-        run: python tests/test_gate_cross_repo_inspection.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python substrate/gates/gate2_cross_repo.py
