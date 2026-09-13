@@ -7,7 +7,7 @@
 # For CI failures, the primary route should be through the main droid-task pipeline via Linear gateway.
 set -uo pipefail
 
-LOG_DIR="/Users/busiji/.factory/webhook/logs"
+LOG_DIR="${LOG_DIR:-${HOME}/.factory/webhook/logs}"
 LOG_FILE="$LOG_DIR/ci-failed-$(date +%Y%m%d-%H%M%S).log"
 
 mkdir -p "$LOG_DIR"

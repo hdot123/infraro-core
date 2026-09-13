@@ -91,13 +91,13 @@ CROSS_DIR_MAPPINGS=(
 
 ENV_DIFF_LINES=(
     # trigger-droid.sh 中的硬编码路径（macOS 特定）
-    "trigger-droid.sh:硬编码路径:/Users/busiji/.factory/webhook - 生产环境基础路径"
+    "trigger-droid.sh:环境变量路径:${HOME}/.factory/webhook - 生产环境基础路径"
     "trigger-droid.sh:硬编码路径:/opt/homebrew/bin/python3 - macOS Python 路径"
     "trigger-droid.sh:硬编码路径:/opt/homebrew/bin/flock - macOS flock 路径"
-    "trigger-droid.sh:硬编码路径:/Users/busiji/.factory/config/repositories.yml - 仓库配置路径"
+    "trigger-droid.sh:环境变量路径:${HOME}/.factory/config/repositories.yml - 仓库配置路径"
 
     # reconcile-evolution.sh 中的硬编码路径
-    "reconcile-evolution.sh:硬编码路径:/Users/busiji/.factory/webhook - 生产环境基础路径"
+    "reconcile-evolution.sh:环境变量路径:${HOME}/.factory/webhook - 生产环境基础路径"
     "reconcile-evolution.sh:硬编码路径:/opt/homebrew/bin/python3 - macOS Python 路径"
 
     # local_branch_cleanup.sh 中的硬编码路径（TD-BR-01）

@@ -18,9 +18,10 @@
  *   - Private repos (hdot123-org only): PAT enables access
  */
 
-// Source IP whitelist: only ce-01 runner IP allowed (CF-Connecting-IP)
+// Source IP whitelist: only allowed runner IPs allowed (CF-Connecting-IP)
 // This is the original security gate from ~/cf/xun201811/gh-proxy/worker.js
-var ALLOWED_IPS = ["47.111.21.195"];
+// Production IPs are configured in CF Worker environment variables (private附录指引：见 `/Users/busiji/infraro/memory/kb/`)
+var ALLOWED_IPS = []; // Will be populated from environment variables
 
 var ALLOWED_HOSTS = [
   "github.com",

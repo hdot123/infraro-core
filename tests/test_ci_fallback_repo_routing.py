@@ -4,7 +4,7 @@
 透传 4 个参数（pr_number/branch/sha/status），CI payload 的 repo 字段被丢弃。
 release-please PR #136 的 pending-ci 文件不存在（非 session 会话创建，无
 write-pending-ci 注册），fallback 走 missing-pending-ci 路径，repo 选择退化为
-webhook 接收器的 command-working-directory（/Users/busiji/memory）——infra-core
+webhook 接收器的 command-working-directory（/path/to/memory）——infra-core
 的 PR #136 被误派到 memory 仓上下文（memory 仓 2026-07 的旧 PR #136）。
 
 修复语义（fallback repo 选择优先级）：
