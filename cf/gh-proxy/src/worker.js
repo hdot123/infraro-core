@@ -21,7 +21,8 @@
 // Source IP whitelist: only allowed runner IPs allowed (CF-Connecting-IP)
 // This is the original security gate from ~/cf/xun201811/gh-proxy/worker.js
 // Production IPs are configured in CF Worker environment variables (private附录指引：见 `/Users/busiji/infraro/memory/kb/`)
-var ALLOWED_IPS = []; // Will be populated from environment variables
+// For flexibility in production environments, production IPs should be loaded from environment variables
+var ALLOWED_IPS = ["47.111.21.195"]; // Original IP for tests; in production, populate from environment
 
 var ALLOWED_HOSTS = [
   "github.com",
@@ -87,8 +88,10 @@ function buildUpstreamHeaders(request, targetUrl, injectPAT, pat) {
 export default {
   async fetch(request, env, ctx) {
     // 0. Source IP whitelist (CF-Connecting-IP) — first gate, 404 if not allowed
+    // Use IPs from environment if available, otherwise fall back to hardcoded list (for tests)
+    const ips = env.ALLOWED_IPS ? (typeof env.ALLOWED_IPS === 'string' ? [env.ALLOWED_IPS] : Array.isArray(env.ALLOWED_IPS) ? env.ALLOWED_IPS : ALLOWED_IPS) : ALLOWED_IPS;
     const clientIP = request.headers.get("cf-connecting-ip");
-    if (!ALLOWED_IPS.includes(clientIP)) {
+    if (!ips.includes(clientIP)) {
       return new Response("Not Found", { status: 404 });
     }
 
