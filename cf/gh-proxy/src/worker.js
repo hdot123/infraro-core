@@ -89,7 +89,7 @@ export default {
   async fetch(request, env, ctx) {
     // 0. Source IP whitelist (CF-Connecting-IP) — first gate, 404 if not allowed
     // Use IPs from environment if available, otherwise fall back to hardcoded list (for tests)
-    const ips = env.ALLOWED_IPS ? (typeof env.ALLOWED_IPS === 'string' ? [env.ALLOWED_IPS] : Array.isArray(env.ALLOWED_IPS) ? env.ALLOWED_IPS : ALLOWED_IPS) : ALLOWED_IPS;
+    const ips = env.ALLOWED_IPS ? (typeof env.ALLOWED_IPS === 'string' ? env.ALLOWED_IPS.split(',').map(ip => ip.trim()) : Array.isArray(env.ALLOWED_IPS) ? env.ALLOWED_IPS : ALLOWED_IPS) : ALLOWED_IPS;
     const clientIP = request.headers.get("cf-connecting-ip");
     if (!ips.includes(clientIP)) {
       return new Response("Not Found", { status: 404 });

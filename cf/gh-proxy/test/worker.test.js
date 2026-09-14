@@ -36,6 +36,27 @@ test('gh-proxy worker', async (t) => {
     }
   });
 
+  await t.test('accepts request from comma-separated IP list', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url, options) => {
+      return new Response('ok', { status: 200 });
+    };
+
+    try {
+      const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
+        headers: {
+          'cf-connecting-ip': '1.2.3.4',
+          'x-proxy-key': 'test-key'
+        }
+      });
+      const env = { PROXY_KEY: 'test-key', ALLOWED_IPS: '1.2.3.4,5.6.7.8,9.10.11.12' };
+      const res = await worker.fetch(req, env);
+      assert.strictEqual(res.status, 200);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   await t.test('rejects request without PROXY_KEY', async () => {
     const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
       headers: { 'cf-connecting-ip': 'TEST_IP_PLACEHOLDER' }
