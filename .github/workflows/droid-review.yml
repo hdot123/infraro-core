@@ -369,7 +369,7 @@ jobs:
       - name: Write BYOM settings file
         # LLM 链路：hosted runner 公网直达 Kong（via CF Worker 反向代理）。
         # tailnet only 端点（node1.tail5e888.ts.net）hosted runner 无法访问，故
-        # 改用公网可达端点 https://ai.exa.edu.kg/v1。
+        # 改用公网可达端点 https://ai.lumivane.dpdns.org/v1（CF AiGateway）。
         # 旧路径：ts 内网直达 Kong（tailscale serve, tailnet only, LE 证书），
         # 前置依赖：runner 机 /etc/hosts 有 node1.tail5e888.ts.net 静态条目
         # （runner 的 tailscale accept-dns=false，MagicDNS 不可用）。
@@ -384,7 +384,7 @@ jobs:
               {
                 "model": "qwen3.7-plus",
                 "displayName": "Bailian Qwen 3.7 Plus",
-                "baseUrl": "https://ai.exa.edu.kg/v1",
+                "baseUrl": "https://ai.lumivane.dpdns.org/v1",
                 "apiKey": "",
                 "provider": "generic-chat-completion-api",
                 "maxOutputTokens": 65536,

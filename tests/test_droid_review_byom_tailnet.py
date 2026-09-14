@@ -1,7 +1,7 @@
 """droid-review BYOM public endpoint routing test（F2 round 7 fix）。
 
 Regression protection: BYOM LLM call baseUrl must use public endpoint
-(https://ai.exa.edu.kg/v1 via CF Worker reverse proxy), with real API key
+(https://ai.lumivane.dpdns.org/v1 via CF AiGateway), with real API key
 injection to enable hosted runner access.
 
 Background: Original tailnet-only endpoint (node1.tail5e888.ts.net) is not
@@ -110,10 +110,10 @@ class TestByomPublicRouting:
     """
 
     def test_baseurl_points_to_public_kong(self, wf_path):
-        """baseUrl must be https://ai.exa.edu.kg/v1 (public CF Worker reverse proxy)."""
+        """baseUrl must be https://ai.lumivane.dpdns.org/v1 (public CF AiGateway)."""
         settings = _load_settings(wf_path)
         model = settings["customModels"][0]
-        assert model["baseUrl"] == "https://ai.exa.edu.kg/v1", (
+        assert model["baseUrl"] == "https://ai.lumivane.dpdns.org/v1", (
             "BYOM baseUrl must use public endpoint for hosted runner access: "
             "tailnet-only endpoint node1.tail5e888.ts.net is not accessible from ubuntu-latest"
         )
@@ -121,8 +121,8 @@ class TestByomPublicRouting:
     def test_public_endpoint_present_in_active_config(self, wf_path):
         """Active configuration (heredoc JSON block) must include public endpoint."""
         block = _extract_settings_block(wf_path)
-        assert "ai.exa.edu.kg" in block, (
-            "Active BYOM configuration must reference public endpoint ai.exa.edu.kg"
+        assert "ai.lumivane.dpdns.org" in block, (
+            "Active BYOM configuration must reference public endpoint ai.lumivane.dpdns.org"
         )
 
     def test_settings_block_is_valid_json(self, wf_path):
