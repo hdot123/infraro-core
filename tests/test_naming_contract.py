@@ -96,23 +96,17 @@ class TestReusableNoTopLevelConcurrency:
         )
 
 
-class TestReusableDualFormKeyContract:
-    """跨仓 workflow_call 键严格校验的声明面契约（CONSUMER-GATE-DEADLOCK 修复）。
+class TestReusableSnakeKeyContract:
+    """跨仓 workflow_call 键严格校验的声明面契约（SNAKE-CONVERGENCE v0.18.5 终态）。
 
     GitHub 对 caller `with:`/`secrets:` 传键做声明面严格校验——caller 传了
     callee 未声明的键 → run 级 startup_failure（零 job）；callee required 键
-    caller 未传同理。跨仓改名没有原子同步窗口（pull_request_target 恒用
-    main 定义），memory #1075 双写 caller × 单侧声明 callee 即 2026-08-30
-    04:00Z 起 memory 三 workflow（Droid Auto Review / Auto Merge / Watchdog）
-    全量 startup_failure、#1076/#1077 死锁的根因。
-
-    本契约钉住被消费仓引用的 5 个 reusable：每个 snake 键必须带 hyphen 变体
-    （required: false），且消费点熔合 `x_snake || x['x-hyphen']`（禁止裸取），
-    防再次单侧删键。两步终态：memory 统一 snake-only 后，删变体键的 PR
-    必须同步收缩本契约的 DUAL_FORM_FILES。
+    caller 未传同理。2026-08-30 CONSUMER-GATE-DEADLOCK 修复期曾要求双形态
+    （snake + hyphen 变体）与消费点熔合；v0.18.5 蛇形收敛立法删除全部
+    hyphen 过渡变体与熔合表达式，本契约随之收缩为 snake 单形态终态。
     """
 
-    DUAL_FORM_FILES = (
+    SNAKE_FORM_FILES = (
         ".github/workflows/auto-merge-pipeline.yml",
         ".github/workflows/droid-review-shards.yml",
         ".github/workflows/droid-review-watchdog-handlers.yml",
@@ -120,52 +114,27 @@ class TestReusableDualFormKeyContract:
         ".github/workflows/evolution-heartbeat.yml",
     )
 
-    @classmethod
-    def _dual_form_keys(cls, path: Path) -> list[tuple[str, str]]:
-        """返回 (context, snake 键) 列表：workflow_call 下声明了 hyphen 变体的 snake 键。"""
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        triggers = data.get("on") or data.get(True) or {}
-        call = triggers.get("workflow_call", {}) or {}
-        pairs: list[tuple[str, str]] = []
-        for context in ("inputs", "secrets"):
-            block = call.get(context, {}) or {}
-            for key in block:
-                if "_" in key and key.replace("_", "-") in block:
-                    pairs.append((context, key))
-        return pairs
-
-    def test_dual_form_files_have_snake_keys_with_variants(self):
-        """契约面自检：5 个文件各自至少存在一个双形态键（防清单失效/漂移）。"""
-        for rel in self.DUAL_FORM_FILES:
-            pairs = self._dual_form_keys(REPO_ROOT / rel)
-            assert pairs, f"{rel} 未发现任何双形态键对——清单或声明面漂移"
-
-    @pytest.mark.parametrize("rel", DUAL_FORM_FILES)
-    def test_variants_declared_optional(self, rel: str):
-        """hyphen 变体必须 required: false（required snake 会挡死未迁移 caller）。"""
+    @pytest.mark.parametrize("rel", SNAKE_FORM_FILES)
+    def test_workflow_call_keys_snake_single_form(self, rel: str):
+        """workflow_call inputs/secrets 声明键一律 snake 小写（无 '-'、无大写）。"""
         data = yaml.safe_load((REPO_ROOT / rel).read_text(encoding="utf-8"))
         triggers = data.get("on") or data.get(True) or {}
         call = triggers.get("workflow_call", {}) or {}
         offenders = []
-        for context, snake in self._dual_form_keys(REPO_ROOT / rel):
-            hyphen = snake.replace("_", "-")
-            variant = (call.get(context, {}) or {}).get(hyphen, {})
-            if variant.get("required") is not False:
-                offenders.append(f"{context}:{hyphen}")
-        assert not offenders, f"{rel} hyphen 变体必须可选（required: false）：{offenders}"
-
-    @pytest.mark.parametrize("rel", DUAL_FORM_FILES)
-    def test_no_bare_consumption_of_dual_form_keys(self, rel: str):
-        """双形态键的消费点必须熔合，禁止裸取（防新增消费点漏熔合回退单侧语义）。"""
-        raw = (REPO_ROOT / rel).read_text(encoding="utf-8")
-        offenders = []
-        for context, snake in self._dual_form_keys(REPO_ROOT / rel):
-            bare = "${{ %s.%s }}" % (context, snake)
-            if bare in raw:
-                offenders.append(bare)
+        for context in ("inputs", "secrets"):
+            for key in call.get(context, {}) or {}:
+                if "-" in key or key != key.lower():
+                    offenders.append(f"{context}:{key}")
         assert not offenders, (
-            f"{rel} 双形态键存在裸取消费点（必须熔合 x_snake || x['x-hyphen']）：{offenders}"
+            f"{rel} workflow_call 键必须 snake 小写单形态（SNAKE-CONVERGENCE）：{offenders}"
         )
+
+    @pytest.mark.parametrize("rel", SNAKE_FORM_FILES)
+    def test_no_fusion_or_bracket_consumption(self, rel: str):
+        """消费点禁止熔合表达式与括号取键形态（回潮即违例）。"""
+        raw = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        for banned in ("|| inputs.", "|| secrets.", "inputs['", "secrets['"):
+            assert banned not in raw, f"{rel} 含禁用取值形态: {banned}"
 
 
 class TestGovernanceJobNameContract:
@@ -763,6 +732,8 @@ class TestAutoMergeTriggerContract:
         assert not re.search(r"uses:.*shared-workflows", content), (
             "merge 步不得引用已退役的 shared-workflows（本仓 actions/auto-merge）"
         )
+        # auto-merge.yml 为本仓自用内联 caller（非 workflow_call 声明面）：
+        # 直读仓级 secret，大小写不敏感，未列入 SNAKE-CONVERGENCE 改写面
         assert "${{ secrets.DISPATCH_TOKEN }}" in content
 
     def test_auto_merge_jobs_run_on_self_hosted(self):

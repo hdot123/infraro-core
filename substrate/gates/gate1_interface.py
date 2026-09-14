@@ -7,8 +7,8 @@ engine's real declaration face:
 * every ``with:`` key must be a declared input (an undeclared key passed means
   a run-level startup failure -- memory #1075);
 * every required input/secrets entry without a default must be passed;
-* the pinned ``@ref`` must be an existing git tag (dead references like
-  ``@v0.15.0`` fail here);
+* the pinned ``@ref`` must be an existing git tag (references to deleted
+  tags fail here);
 * composite-action ``uses`` targets must exist with matching declared inputs.
 
 Template source resolution: sibling declaration checkout (``DECL_REPO_DIR`` or

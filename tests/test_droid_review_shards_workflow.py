@@ -50,16 +50,20 @@ class TestWorkflowCallSurface:
             "shard_max_count",
             "shard_timeout_minutes",
             "shard_max_parallel",
-            # hyphen 过渡变体（双形态并存，CONSUMER-GATE-DEADLOCK 修复）
-            "engine-ref",
-            "pr-number",
-            "head-sha",
-            "shard-max-files",
-            "shard-max-count",
-            "shard-timeout-minutes",
-            "shard-max-parallel",
         ):
             assert name in inputs, f"workflow_call 缺少 input: {name}"
+
+    def test_inputs_snake_single_form(self, workflow_call):
+        """SNAKE-CONVERGENCE（v0.18.5）：workflow_call inputs 键一律 snake 小写。
+
+        旧 hyphen 过渡变体（CONSUMER-GATE-DEADLOCK 修复期双形态并存）已随
+        蛇形收敛立法删除；任何含 '-' 或大写字符的键都算回潮违例。
+        """
+        inputs = workflow_call.get("inputs", {})
+        for name in inputs:
+            assert "-" not in name and name == name.lower(), (
+                f"workflow_call input 键必须 snake 小写单形态，违例: {name}"
+            )
 
     def test_input_defaults_match_budget_layers(self, workflow_call):
         """预算层默认值与 VAL-SHARD-011 一致（caller 未转发时兜底）。
@@ -76,10 +80,20 @@ class TestWorkflowCallSurface:
         assert inputs["engine_ref"]["default"] == ""
 
     def test_secrets_declared(self, workflow_call):
+        """secrets 声明键为 snake 小写（SNAKE-CONVERGENCE）。
+
+        声明键从 FACTORY_API_KEY/NVIDIA_KONG_PROXY_KEY 归一为
+        factory_api_key/nvidia_kong_proxy_key（GHA secrets 上下文大小写不敏感，
+        消费侧 env 变量名保持脚本契约大小写，仅声明/转发层 snake 化）。
+        """
         secrets = workflow_call.get("secrets", {})
-        assert "FACTORY_API_KEY" in secrets, "必须声明 FACTORY_API_KEY（droid exec 凭证）"
-        assert secrets["FACTORY_API_KEY"].get("required") is True
-        assert "NVIDIA_KONG_PROXY_KEY" in secrets, "必须声明 NVIDIA_KONG_PROXY_KEY 注入面"
+        assert "factory_api_key" in secrets, "必须声明 factory_api_key（droid exec 凭证）"
+        assert secrets["factory_api_key"].get("required") is True
+        assert "nvidia_kong_proxy_key" in secrets, "必须声明 nvidia_kong_proxy_key 注入面"
+        for name in secrets:
+            assert "-" not in name and name == name.lower(), (
+                f"workflow_call secrets 键必须 snake 小写单形态，违例: {name}"
+            )
 
     def test_outputs_exposed_for_local_aggregate(self, workflow_call):
         """caller 本地 droid-review job 依赖这些输出驱动 composite action"""
@@ -93,18 +107,17 @@ class TestWorkflowCallSurface:
         assert "plan-shards.outputs.plan_ok" in outputs["plan_shards_ok"]["value"]
 
 
-class TestDualFormInputs:
-    """双形态键声明 + 取值熔合（CONSUMER-GATE-DEADLOCK 修复，2026-08-30）。
+class TestSnakeSingleFormInputs:
+    """snake 单形态键声明 + 单读取值（SNAKE-CONVERGENCE，v0.18.5 立法）。
 
     GitHub 对 caller with: 传键做声明面严格校验：caller 传了 callee 未声明键
-    → run 级 startup_failure（零 job）。memory #1075 双写 caller（snake +
-    hyphen 并传）× 单侧声明 callee 即 04:08Z Droid Auto Review 断链根因。
-    每个snake 键必须带 hyphen 变体（required: false），消费点统一熔合
-    `inputs.x_snake || inputs['x-hyphen']`。两步终态：memory 统一 snake-only
-    后本契约随删变体键的 PR 一并退役。
+    → run 级 startup_failure（零 job）。2026-08-30 CONSUMER-GATE-DEADLOCK
+    修复期曾要求每个 snake 键带 hyphen 变体 + 消费点熔合；v0.18.5 蛇形收敛
+    立法删除全部 hyphen 过渡变体，消费点统一 snake 单读——熔合表达式与
+    括号取键形态均属回潮违例。
     """
 
-    DUAL_FORM_SNAKE_KEYS = (
+    SNAKE_KEYS = (
         "engine_ref",
         "pr_number",
         "head_sha",
@@ -114,46 +127,33 @@ class TestDualFormInputs:
         "shard_max_parallel",
     )
 
-    def test_hyphen_variants_declared_optional(self, workflow_call):
+    def test_no_kebab_variants_declared(self, workflow_call):
         inputs = workflow_call.get("inputs", {})
-        for snake in self.DUAL_FORM_SNAKE_KEYS:
+        for snake in self.SNAKE_KEYS:
             hyphen = snake.replace("_", "-")
-            assert hyphen in inputs, f"缺少 hyphen 变体 input: {hyphen}"
-            assert inputs[hyphen]["required"] is False, f"{hyphen} 变体必须可选"
-            assert inputs[hyphen]["type"] == "string"
-
-    def test_fusion_expressions_at_every_consumption(self, shards_data):
-        raw = WORKFLOW_PATH.read_text(encoding="utf-8")
-        expected_fusions = (
-            (
-                "ref: ${{ inputs.engine_ref || inputs['engine-ref']"
-                " || job.workflow_sha || github.sha }}"
-            ),
-            "PR_NUMBER=\"${{ inputs.pr_number || inputs['pr-number'] }}\"",
-            "HEAD_SHA=\"${{ inputs.head_sha || inputs['head-sha'] }}\"",
-            "MAX_FILES: ${{ inputs.shard_max_files || inputs['shard-max-files'] }}",
-            "MAX_COUNT: ${{ inputs.shard_max_count || inputs['shard-max-count'] }}",
-            (
-                "timeout-minutes: ${{ fromJSON(inputs.shard_timeout_minutes"
-                " || inputs['shard-timeout-minutes']) }}"
-            ),
-            (
-                "max-parallel: ${{ fromJSON(inputs.shard_max_parallel"
-                " || inputs['shard-max-parallel']) }}"
-            ),
-        )
-        for fusion in expected_fusions:
-            assert fusion in raw, f"缺少取值熔合表达式: {fusion}"
-
-    def test_no_bare_snake_input_consumption(self, shards_data):
-        """声明了 hyphen 变体的 snake 键禁止裸取（防未来新增消费点漏熔合）。"""
-        raw = WORKFLOW_PATH.read_text(encoding="utf-8")
-        for snake in self.DUAL_FORM_SNAKE_KEYS:
-            bare = "${{ inputs.%s }}" % snake
-            assert bare not in raw, (
-                f"inputs.{snake} 存在裸取消费点——必须熔合 inputs.{snake} "
-                f"|| inputs['{snake.replace('_', '-')}']"
+            assert hyphen not in inputs, (
+                f"hyphen 过渡变体 {hyphen} 必须保持删除（snake 单形态立法）"
             )
+
+    def test_single_read_expressions_at_every_consumption(self, shards_data):
+        raw = WORKFLOW_PATH.read_text(encoding="utf-8")
+        expected_reads = (
+            "ref: ${{ inputs.engine_ref || job.workflow_sha || github.sha }}",
+            'PR_NUMBER="${{ inputs.pr_number }}"',
+            'HEAD_SHA="${{ inputs.head_sha }}"',
+            "MAX_FILES: ${{ inputs.shard_max_files }}",
+            "MAX_COUNT: ${{ inputs.shard_max_count }}",
+            "timeout-minutes: ${{ fromJSON(inputs.shard_timeout_minutes) }}",
+            "max-parallel: ${{ fromJSON(inputs.shard_max_parallel) }}",
+        )
+        for read in expected_reads:
+            assert read in raw, f"缺少 snake 单读取值表达式: {read}"
+
+    def test_no_fusion_or_bracket_syntax(self, shards_data):
+        """SNAKE-CONVERGENCE：inputs 消费点禁止熔合表达式与括号取键形态。"""
+        raw = WORKFLOW_PATH.read_text(encoding="utf-8")
+        assert "|| inputs." not in raw, "inputs 消费点不得保留熔合表达式（|| inputs.）"
+        assert "inputs['" not in raw, "inputs 消费点不得使用括号取键形态（inputs['…']）"
 
 
 class TestShardPipelineStructure:
@@ -235,7 +235,7 @@ class TestEngineSelfContainment:
             ]
             assert engine_steps, f"job {job_id} 缺少 infra-core 引擎 checkout"
             assert engine_steps[0]["with"].get("ref") == (
-                "${{ inputs.engine_ref || inputs['engine-ref'] || job.workflow_sha || github.sha }}"
+                "${{ inputs.engine_ref || job.workflow_sha || github.sha }}"
             )
 
     def test_review_shard_dual_checkout_of_consumer_repo(self, shards_data):
