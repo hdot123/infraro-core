@@ -20,9 +20,9 @@
 
 // Source IP whitelist: only allowed runner IPs allowed (CF-Connecting-IP)
 // This is the original security gate from ~/cf/xun201811/gh-proxy/worker.js
-// Production IPs are configured in CF Worker environment variables (private附录指引：见 `/Users/busiji/infraro/memory/kb/`)
+// Production IPs are configured in CF Worker environment variables (private appendix: see project memory/kb/)
 // For flexibility in production environments, production IPs should be loaded from environment variables
-var ALLOWED_IPS = ["47.111.21.195"]; // Original IP for tests; in production, populate from environment
+var ALLOWED_IPS = ["PRODUCTION_IP_PLACEHOLDER"]; // Original IP for tests; in production, populate from environment
 
 var ALLOWED_HOSTS = [
   "github.com",

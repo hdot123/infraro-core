@@ -56,6 +56,7 @@ mencbo 清洁、memory 残留 2 分支（上行登记）。legacy-repo-dispositi
 | `scripts/check_boundary.py` | self-reference | hdot123 | - | BOUNDARY guard 自身的规则正则字面量（与 check_boundary 的自豁免同构） |
 | `src/infra_core/engine/evolution_adapters.py` | local-path | hdot123 | engine-substrate-boundary | docstring 注释中的宿主路径提及（ transplant 注释） |
 | `substrate/gates/` + gate0-exemptions.md | self-reference | substrate-gate-suite | - | 扫描器自身正则字面量 + 存量表原文引用（gate3 扫描自排除，此处登记备案） |
+| `.github/` | runner-topology | hdot123 | substrate-r1-fix-boundary | .github/ 目录中 actionlint、workflow 文件含 runner topology 标签（pve-runner-01/02、node-00/01、ce-01、pve-runner-06 等） |
 
 ## Gate 4
 
