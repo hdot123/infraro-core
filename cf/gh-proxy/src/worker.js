@@ -22,7 +22,7 @@
 // This is the original security gate from ~/cf/xun201811/gh-proxy/worker.js
 // Production IPs are configured in CF Worker environment variables (private appendix: see project memory/kb/)
 // For flexibility in production environments, production IPs should be loaded from environment variables
-var ALLOWED_IPS = ["PRODUCTION_IP_PLACEHOLDER"]; // Original IP for tests; in production, populate from environment
+var ALLOWED_IPS = ["TEST_IP_PLACEHOLDER"]; // Placeholder shared with tests; production IPs come from the ALLOWED_IPS environment binding
 
 var ALLOWED_HOSTS = [
   "github.com",
