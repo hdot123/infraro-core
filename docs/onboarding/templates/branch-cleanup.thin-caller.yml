@@ -45,9 +45,9 @@ jobs:
           trigger-branch: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.event.pull_request.head.ref || '' }}
           # composite action 入参沿用其声明的连字符命名（R1(3) 统一面仅限
           # workflow_call inputs；composite inputs 以 action.yml 声明为准）
-          dispatch-token: ${{ secrets.DISPATCH_TOKEN }}
+          dispatch-token: ${{ secrets.dispatch_token }}
           branch-age-merged-hours: ${{ vars.BRANCH_AGE_MERGED_HOURS }}
           branch-age-closed-hours: ${{ vars.BRANCH_AGE_CLOSED_HOURS }}
           branch-age-orphan-hours: ${{ vars.BRANCH_AGE_ORPHAN_HOURS }}
-          linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+          linear-api-key: ${{ secrets.linear_api_key }}
           linear-project-id: ${{ vars.LINEAR_PROJECT_ID }}
