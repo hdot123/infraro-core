@@ -33,14 +33,14 @@
 | `residual branch: feature/INFRA-1022-silent-swallow-fix` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
 | `residual branch: fix/INFRA-1037-silent-swallow-batch-3` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
 | `residual branch: fix/INFRA-1057-deduplicate-test_helpers` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
-| `in-flight OPEN PR #1273` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 在途 PR（INFRA-1057；清剿时随分支一并处置） |
-| `in-flight OPEN PR #1275` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 在途 PR（INFRA-1060；清剿时随分支一并处置） |
+| `closed PR #1273` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并已关闭 PR（INFRA-1057；清剿时随分支一并处置） |
+| `closed PR #1275` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并已关闭 PR（INFRA-1060；清剿时随分支一并处置） |
 | `residual branch: fix/infra-1060-duplicate-make-git-repo` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
 | `missing from repositories.yml` | LOCAL-ONE | hdot123 | substrate-inventory-bookkeeping | 本地 registry 对账面（CI 不可见），声明仓待补登 |
 | `ERROR_REPO_MAP` | LOCAL-ONE | hdot123 | substrate-foundations-linear-webhook | Worker 路由双侧一致性为本地/私有面（hdot123/webhook 私有，CI token 不可读） |
 
 注：hdot123-org 三冻结仓 GitHub 可见面本首跑实况 = infra-core 清洁（0 PR/0 残留分支）、
-mencbo 清洁、memory 残留 4 分支（上行登记）。legacy-repo-disposition 清完请删除对应行，
+mencbo 清洁、memory 残留 6 项（4 分支 + 2 PR，上行登记）。legacy-repo-disposition 清完请删除对应行，
 使后续新漂移直接转红。
 
 ## Gate 3: registered exposure stock (path prefixes)
@@ -56,16 +56,11 @@ mencbo 清洁、memory 残留 4 分支（上行登记）。legacy-repo-dispositi
 | `scripts/check_boundary.py` | self-reference | hdot123 | - | BOUNDARY guard 自身的规则正则字面量（与 check_boundary 的自豁免同构） |
 | `src/infra_core/engine/evolution_adapters.py` | local-path | hdot123 | engine-substrate-boundary | docstring 注释中的宿主路径提及（ transplant 注释） |
 | `substrate/gates/` + gate0-exemptions.md | self-reference | substrate-gate-suite | - | 扫描器自身正则字面量 + 存量表原文引用（gate3 扫描自排除，此处登记备案） |
-| `.github/actionlint.yaml:3` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | actionlint 配置含 pve-linux 标签（pve-linux runner 类型声明） |
-| `.github/workflows/ci.yml:188` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | ci.yml 注释提及 node-00 出口拓扑 |
-| `.github/workflows/ci.yml:190` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | ci.yml 注释提及 ce-01 runner |
-| `.github/workflows/droid-review-shards.yml:444` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review-shards.yml 注释提及 pve runner |
-| `.github/workflows/droid-review-shards.yml:446` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review-shards.yml 注释提及 node-00 出口拓扑 |
-| `.github/workflows/droid-review-shards.yml:468` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review-shards.yml 注释提及 pve-runner-06 |
-| `.github/workflows/droid-review.yml:334` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review.yml 注释提及 pve runner |
-| `.github/workflows/droid-review.yml:336` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review.yml 注释提及 node-00 出口拓扑 |
-| `.github/workflows/droid-review.yml:358` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review.yml 注释提及 pve-runner-06 |
-| `.github/workflows/droid-runner-pilot.yml:25` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-runner-pilot.yml 注释提及 node-01 内网路线 |
+| `.github/actionlint.yaml` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | actionlint 配置含 pve-runner-01/pve-runner-02 标签（3 行，pve-linux runner 类型声明） |
+| `.github/workflows/ci.yml` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | ci.yml 注释提及 node-00 出口拓扑与 ce-01 runner（188/190 行） |
+| `.github/workflows/droid-review-shards.yml` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review-shards.yml 注释提及 ce-01 pve runner、node-00 出口拓扑、pve-runner-06（444/446/468 行） |
+| `.github/workflows/droid-review.yml` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-review.yml 注释提及 ce-01 pve runner、node-00 出口拓扑、pve-runner-06（334/336/358 行） |
+| `.github/workflows/droid-runner-pilot.yml` | runner-topology | hdot123 | substrate-r2-fix-registry-hardening | droid-runner-pilot.yml 注释提及 node-01 内网路线（25 行） |
 
 ## Gate 4
 
