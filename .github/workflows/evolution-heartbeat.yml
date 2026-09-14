@@ -38,18 +38,12 @@ on:
         type: string
         default: ''
         description: 'infra-core ref (tag/branch/SHA); default = this workflow file commit (job.workflow_sha)'
-    # 双形态键声明（CONSUMER-GATE-DEADLOCK 修复 2026-08-30）：GitHub 对 caller
-    # secrets: 传键做声明面严格校验——caller 传了未声明键 → run 级
-    # startup_failure（零 job）。hyphen 变体 required: false，env 层熔合
-    # `secrets.x_snake || secrets['x-hyphen']`。两步终态：memory 统一
-    # snake-only 后本仓删全部 hyphen 变体。
+    # Snake-only 声明（SNAKE-CONVERGENCE）：统一采用 snake_case 键名，
+    # 消除 hyphen 变体过渡形态，保持接口简洁。
     secrets:
       dispatch_token:
         required: true
         description: PAT (hdot123) for issue/label writes and self-heal dispatch
-      dispatch-token:
-        required: false
-        description: 'hyphen 过渡变体（与 dispatch_token 等价；env 层熔合 snake || hyphen）'
   workflow_dispatch: {}
   # INFRA-717 引擎仓自扫心跳定时面（见文件头注释）。与消费仓 caller 同窗
   # （每 2h 一次），分钟位避开整点高峰（INFRA-578），与 scan 的 17,47 错开
@@ -114,7 +108,7 @@ jobs:
           PY
       - name: Ensure labels exist
         env:
-          GH_TOKEN: ${{ secrets.dispatch_token || secrets['dispatch-token'] }}
+          GH_TOKEN: ${{ secrets.dispatch_token }}
         run: |
           set -euo pipefail
           # INFRA-601: 显式仓库上下文，免疫 runner insteadOf 镜像重写
@@ -122,7 +116,7 @@ jobs:
       - name: Run heartbeat check
         run: python -m infra_core.engine.evolution_heartbeat
         env:
-          GH_TOKEN: ${{ secrets.dispatch_token || secrets['dispatch-token'] }}
+          GH_TOKEN: ${{ secrets.dispatch_token }}
           # P1-A: Prevent module poisoning — blocks automatic insertion of scripts/ into sys.path.
           PYTHONSAFEPATH: '1'
 # 并发治理归属 caller：reusable 本体禁止携带 concurrency（同组名自死锁陷阱，
