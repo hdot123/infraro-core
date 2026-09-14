@@ -16,7 +16,7 @@ gh-proxy 是一个 Cloudflare Worker，用于代理 GitHub 请求，解决中国
 
 ## 认证机制（三层门禁，全部在代码中）
 
-1. **源 IP 白名单**: CF-Connecting-IP 必须在生产白名单内，否则 404（私有附录指引：见 `/Users/busiji/infraro/memory/kb/`）
+1. **源 IP 白名单**: CF-Connecting-IP 必须在生产白名单内，否则 404（私有附录指引：见项目 memory/kb/）
 2. **PROXY_KEY 校验**: 请求头 `x-proxy-key` 必须匹配环境变量，否则 404
 3. **Host 白名单**: 目标域名必须在 ALLOWED_HOSTS 内，否则 403
 4. **PAT 注入**: 仅对 `hdot123-org` 私有仓库路径注入 Basic 形式 PAT（`Authorization: Basic <base64(x-access-token:PAT)>`）
@@ -45,7 +45,7 @@ gh-proxy 是一个 Cloudflare Worker，用于代理 GitHub 请求，解决中国
 ### 2. 部署 Worker
 
 ```bash
-cd /Users/busiji/infra-core/cf/gh-proxy
+cd ./cf/gh-proxy
 npx wrangler deploy
 ```
 
@@ -148,7 +148,7 @@ npx wrangler tail
 ### v1.1 — 12666fdd-8640-4f76-a7e3-71e993e40c4b (2026-09-02)
 
 **变更**：
-- **源 IP 门禁恢复**：原版 worker 硬编码 `CF-Connecting-IP` 白名单（ce-01 runner IP），非白名单一律 404。round-1 改造时误删此门禁，round-3 设计修正后恢复（私有附录指引：见 `/Users/busiji/infraro/memory/kb/`）
+- **源 IP 门禁恢复**：原版 worker 硬编码 `CF-Connecting-IP` 白名单（ce-01 runner IP），非白名单一律 404。round-1 改造时误删此门禁，round-3 设计修正后恢复（私有附录指引：见项目 memory/kb/）
 - **PAT 注入改 Basic 形式**：`Authorization: Basic <base64("x-access-token:PAT")>`。编排器实测确认 github.com git smart-http 端点（info/refs?service=git-upload-pack）拒绝 Bearer/token 形式（返回 401），只接受 Basic 形式；api.github.com 两者皆收
 - **PROXY_KEY 恢复溯源**：原始值取自 ce-01 /home/runner/.gitconfig（1799 行 X-Proxy-Key，48 字符，971a 开头），四份文件（当前+三备份）md5 一致后经管道上传 `wrangler secret put PROXY_KEY` 成功
 - **GH_PRIVATE_PAT 恢复溯源**：1P sever vault 条目 `GitHub-PAT-ghproxy-mirror-readonly`（id wflx3mtpqojpyohxcixdfhacby），fine-grained PAT（Contents: Read-only, All repositories）。编排器用 `op item get --fields credential --reveal | tr -d '\n' | wrangler secret put` 管道灌入（round-2 曾因漏加 `--reveal` 把提示字符串当值，round-3 修复）
@@ -158,7 +158,7 @@ npx wrangler tail
 **验证结果**（编排器在 ce-01 以 runner 用户执行，2026-09-02）：
 - 私有仓经镜像 ×3：`git ls-remote https://gh.qqbaidu.de5.net/https://github.com/hdot123/infraro-core.git HEAD` → 全部返回 `a88518cfa7d5211b66384c1052f1491e90a940bb`
 - 公共仓回归：`git ls-remote https://gh.qqbaidu.de5.net/https://github.com/actions/checkout.git HEAD` → `f548e57e`
-- Mac 负向探测：`curl -s -o /dev/null -w '%{http_code}' https://gh.qqbaidu.de5.net/https://github.com/actions/checkout` → 404（IP 门禁生效证明 - 私有附录指引：见 `/Users/busiji/infraro/memory/kb/`）
+- Mac 负向探测：`curl -s -o /dev/null -w '%{http_code}' https://gh.qqbaidu.de5.net/https://github.com/actions/checkout` → 404（IP 门禁生效证明 - 私有附录指引：见项目 memory/kb/）
 
 **ce-01 旁路退役**（2026-09-02）：
 - 备份：`/home/runner/.gitconfig.bak-pre-withdraw-20260902`

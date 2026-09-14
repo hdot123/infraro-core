@@ -27,7 +27,7 @@ from gate_common import (
     tracked_files,
 )
 
-SCAN_EXCLUDED_DIRS = frozenset({"substrate/gates", ".git", ".venv"})
+SCAN_EXCLUDED_DIRS = frozenset({"substrate/gates", ".git/", ".venv"})
 
 IP_RE = re.compile(r"\b(?P<ip>(?:\d{1,3}\.){3}\d{1,3})\b")
 LOCAL_PATH_RE = re.compile(r"(?P<path>/Users/[A-Za-z0-9_.-]+|/home/[A-Za-z0-9_.-]+)")

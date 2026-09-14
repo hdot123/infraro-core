@@ -455,7 +455,7 @@ def test_adapt_daily_audit():
         "infrastructure": {
             "servers": {
                 "node-00": {
-                    "host": "47.111.21.195",
+                    "host": "PRODUCTION_IP_PLACEHOLDER",
                     "violations": [
                         {
                             "type": "container_down",

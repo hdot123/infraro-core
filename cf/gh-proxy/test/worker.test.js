@@ -24,7 +24,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -38,7 +38,7 @@ test('gh-proxy worker', async (t) => {
 
   await t.test('rejects request without PROXY_KEY', async () => {
     const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
-      headers: { 'cf-connecting-ip': '47.111.21.195' }
+      headers: { 'cf-connecting-ip': 'TEST_IP_PLACEHOLDER' }
     });
     const env = { PROXY_KEY: 'test-key' };
     const res = await worker.fetch(req, env);
@@ -48,7 +48,7 @@ test('gh-proxy worker', async (t) => {
   await t.test('rejects request with wrong PROXY_KEY', async () => {
     const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
       headers: {
-        'cf-connecting-ip': '47.111.21.195',
+        'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
         'x-proxy-key': 'wrong-key'
       }
     });
@@ -60,7 +60,7 @@ test('gh-proxy worker', async (t) => {
   await t.test('rejects non-https target', async () => {
     const req = new Request('https://gh-proxy.test/http://github.com/test/repo', {
       headers: {
-        'cf-connecting-ip': '47.111.21.195',
+        'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
         'x-proxy-key': 'test-key'
       }
     });
@@ -74,7 +74,7 @@ test('gh-proxy worker', async (t) => {
     // Use a malformed URL that will fail URL constructor
     const req = new Request('https://gh-proxy.test/https://', {
       headers: {
-        'cf-connecting-ip': '47.111.21.195',
+        'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
         'x-proxy-key': 'test-key'
       }
     });
@@ -87,7 +87,7 @@ test('gh-proxy worker', async (t) => {
   await t.test('rejects non-whitelisted host', async () => {
     const req = new Request('https://gh-proxy.test/https://evil.com/test', {
       headers: {
-        'cf-connecting-ip': '47.111.21.195',
+        'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
         'x-proxy-key': 'test-key'
       }
     });
@@ -110,7 +110,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -136,7 +136,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key',
           'authorization': 'Bearer client-token',
           'x-custom': 'preserved'
@@ -164,7 +164,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/hdot123/infraro-core', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -190,7 +190,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/other-org/repo', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -214,7 +214,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/hdot123/infraro-core', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -240,7 +240,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/hdot123/infraro-core.git/info/refs', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -266,7 +266,7 @@ test('gh-proxy worker', async (t) => {
     try {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo?param=value', {
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -291,7 +291,7 @@ test('gh-proxy worker', async (t) => {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
         method: 'POST',
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
@@ -316,7 +316,7 @@ test('gh-proxy worker', async (t) => {
       const req = new Request('https://gh-proxy.test/https://github.com/test/repo', {
         method: 'GET',
         headers: {
-          'cf-connecting-ip': '47.111.21.195',
+          'cf-connecting-ip': 'TEST_IP_PLACEHOLDER',
           'x-proxy-key': 'test-key'
         }
       });
