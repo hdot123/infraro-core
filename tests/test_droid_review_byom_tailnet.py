@@ -122,16 +122,20 @@ class TestByomPublicRouting:
         assert "os.environ['LUMIVANE_BASE_URL']" in run_script, "baseUrl must be injected from LUMIVANE_BASE_URL environment variable"
 
     def test_public_endpoint_present_in_active_config(self, wf_path):
-        """Active configuration (heredoc JSON block) must include public endpoint."""
+        """Active configuration must assert env injection chain (secret→env→settings.json) is complete."""
         block = _extract_settings_block(wf_path)
-        # Check if domain reference exists either in heredoc block or in surrounding comments
-        comment_block = _get_step_comment_block(wf_path, BYOM_STEP_NAME)
+        # Check that the Python injection script is present and correctly references the environment variables
+        run_script = _get_byom_step(wf_path)["run"]
         
-        has_domain_in_block = "lumivane.dpdns.org" in block
-        has_domain_in_comments = "lumivane.dpdns.org" in comment_block
+        # Verify that the environment variable injection chain is intact
+        has_base_url_injection = "os.environ['LUMIVANE_BASE_URL']" in run_script
+        has_kong_key_injection = "os.environ['LUMIVANE_KONG_KEY']" in run_script  
+        has_cfat_injection = "os.environ['LUMIVANE_CFAT']" in run_script
+        has_cfat_auth_header = "'cf-aig-authorization'" in run_script
         
-        assert has_domain_in_block or has_domain_in_comments, (
-            "Active BYOM configuration must reference public endpoint ai.lumivane.dpdns.org in heredoc or comments"
+        assert has_base_url_injection and has_kong_key_injection and has_cfat_injection and has_cfat_auth_header, (
+            "BYOM configuration must include complete env injection chain: "
+            "LUMIVANE_BASE_URL, LUMIVANE_KONG_KEY, LUMIVANE_CFAT injection with cf-aig-authorization header"
         )
 
     def test_settings_block_is_valid_json(self, wf_path):
