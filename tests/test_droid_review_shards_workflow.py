@@ -79,7 +79,7 @@ class TestWorkflowCallSurface:
         secrets = workflow_call.get("secrets", {})
         assert "FACTORY_API_KEY" in secrets, "必须声明 FACTORY_API_KEY（droid exec 凭证）"
         assert secrets["FACTORY_API_KEY"].get("required") is True
-        assert "NVIDIA_KONG_PROXY_KEY" in secrets, "必须声明 NVIDIA_KONG_PROXY_KEY 注入面"
+        assert "LUMIVANE_KONG_KEY" in secrets, "必须声明 LUMIVANE_KONG_KEY 注入面"
 
     def test_outputs_exposed_for_local_aggregate(self, workflow_call):
         """caller 本地 droid-review job 依赖这些输出驱动 composite action"""
