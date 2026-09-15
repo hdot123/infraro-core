@@ -143,9 +143,15 @@ on:
       FACTORY_API_KEY:
         description: 'Factory API key（droid exec 凭证）'
         required: true
+      LUMIVANE_BASE_URL:
+        description: 'Lumivane base URL（BYOM provider endpoint）'
+        required: true
+      LUMIVANE_CFAT:
+        description: 'Lumivane CF Access Token（BYOM provider authentication）'
+        required: true
       LUMIVANE_KONG_KEY:
-        description: 'Lumivane Kong proxy key（BYOM provider 格式占位；内网 Kong 无认证，保留注入面）'
-        required: false
+        description: 'Lumivane Kong proxy key（BYOM provider authentication）'
+        required: true
 
 # F4/INFRA-688: 显式最小权限基线——三个 job 均已带 job 级声明；顶层基线兜底
 # 未来新增 job 忘记声明时回落到只读（而非仓库默认权限）。
@@ -347,6 +353,8 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.plan-shards.outputs.shards) }}
     env:
+      LUMIVANE_BASE_URL: ${{ secrets.LUMIVANE_BASE_URL }}
+      LUMIVANE_CFAT: ${{ secrets.LUMIVANE_CFAT }}
       LUMIVANE_KONG_KEY: ${{ secrets.LUMIVANE_KONG_KEY }}
     permissions:
       contents: read
@@ -477,14 +485,9 @@ jobs:
           fi
 
       - name: Write BYOM settings file
-        # LLM 链路：hosted runner 公网直达 Lumivane（via CF Worker 反向代理）。
-        # tailnet only 端点（node1.tail5e888.ts.net）hosted runner 无法访问，故
-        # 改用公网可达端点 https://ai.lumivane.dpdns.org/v1。
-        # 旧路径：ts 内网直达 Kong（tailscale serve, tailnet only, LE 证书），
-        # 前置依赖：runner 机 /etc/hosts 有 node1.tail5e888.ts.net 静态条目
-        # （runner 的 tailscale accept-dns=false，MagicDNS 不可用）。
-        # apiKey 字段现改为真实注入——公网端点必须带认证 key（不再是仅格式占位）。
-        # cf-aig-authorization 头同样从环境变量注入，因 Factory BYOM 的 extraHeaders 不支持 ${VAR}。
+        # LLM routing: hosted runner accesses public endpoint via CF Worker reverse proxy.
+        # API key injection from environment variables to avoid logging secrets.
+        # cf-aig-authorization header injection for compatibility with Lumivane endpoint.
         run: |
           set -euo pipefail
           mkdir -p ~/.factory
