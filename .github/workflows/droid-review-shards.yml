@@ -485,7 +485,7 @@ jobs:
           fi
 
       - name: Write BYOM settings file
-        # Public endpoint routing via CF Worker reverse proxy.
+        # LLM routing: hosted runner accesses public endpoint via CF Worker reverse proxy.
         # API key injection from environment variables to avoid logging secrets.
         # cf-aig-authorization header injection for compatibility with Lumivane endpoint.
         run: |
