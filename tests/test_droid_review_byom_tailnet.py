@@ -1,8 +1,8 @@
 """droid-review BYOM public endpoint routing test（F2 round 7 fix）。
 
-Regression protection: BYOM LLM call baseUrl must use public endpoint
-(https://ai.lumivane.dpdns.org/v1 via CF Worker reverse proxy), with real API key
-injection to enable hosted runner access.
+Regression protection: BYOM LLM call baseUrl must use the public BYOM
+endpoint (injected from LUMIVANE_BASE_URL secret via CF Worker reverse
+proxy), with real API key injection to enable hosted runner access.
 
 Background: Original tailnet-only endpoint (node1.tail5e888.ts.net) is not
 accessible from hosted runners (ubuntu-latest), causing droid exec timeout
@@ -110,7 +110,7 @@ class TestByomPublicRouting:
     """
 
     def test_baseurl_points_to_public_kong(self, wf_path):
-        """Configuration must be set up to use https://ai.lumivane.dpdns.org/v1 via environment variable injection."""
+        """Configuration must source its baseUrl from LUMIVANE_BASE_URL environment variable injection."""
         settings = _load_settings(wf_path)
         model = settings["customModels"][0]
         # The template contains empty placeholders, which are later populated via environment variables
