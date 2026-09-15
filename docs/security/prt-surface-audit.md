@@ -45,7 +45,7 @@ setup → plan-shards → review-shard (并行矩阵) → droid-review (聚合)
 **凭证使用**：
 - `GITHUB_TOKEN`（自动注入）：用于 `gh pr view`/`gh api` 读取 PR 信息、上传 artifact
 - `FACTORY_API_KEY`：BYOM 调用 Kong 代理（非 PR 代码可见）
-- `NVIDIA_KONG_PROXY_KEY`：BYOM 链路认证（非 PR 代码可见）
+- `LUMIVANE_KONG_KEY`：BYOM 链路认证（非 PR 代码可见）
 
 **暴露面分析**：
 - `GITHUB_TOKEN` 权限：`contents: read` + `actions: write`（upload-artifact）+ `pull-requests: read`
