@@ -228,7 +228,7 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.plan-shards.outputs.shards) }}
     env:
-      NVIDIA_KONG_PROXY_KEY: ${{ secrets.NVIDIA_KONG_PROXY_KEY }}
+      LUMIVANE_KONG_KEY: ${{ secrets.LUMIVANE_KONG_KEY }}
     permissions:
       contents: read      # checkout (BASE + HEAD)
       actions: write      # upload-artifact (debug transcripts)
@@ -367,24 +367,25 @@ jobs:
           fi
 
       - name: Write BYOM settings file
-        # LLM 链路：hosted runner 公网直达 Kong（via CF Worker 反向代理）。
+        # LLM 链路：hosted runner 公网直达 Lumivane（via CF Worker 反向代理）。
         # tailnet only 端点（node1.tail5e888.ts.net）hosted runner 无法访问，故
-        # 改用公网可达端点 https://ai.exa.edu.kg/v1。
+        # 改用公网可达端点 https://ai.lumivane.dpdns.org/v1。
         # 旧路径：ts 内网直达 Kong（tailscale serve, tailnet only, LE 证书），
         # 前置依赖：runner 机 /etc/hosts 有 node1.tail5e888.ts.net 静态条目
         # （runner 的 tailscale accept-dns=false，MagicDNS 不可用）。
         # apiKey 字段现改为真实注入——公网端点必须带认证 key（不再是仅格式占位）。
+        # cf-aig-authorization 头同样从环境变量注入，因 Factory BYOM 的 extraHeaders 不支持 ${VAR}。
         run: |
           set -euo pipefail
           mkdir -p ~/.factory
-          # Create initial settings file with placeholder
+          # Create initial settings file with placeholders
           cat > ~/.factory/settings.json << 'SETTINGS_EOF'
           {
             "customModels": [
               {
                 "model": "qwen3.7-plus",
                 "displayName": "Bailian Qwen 3.7 Plus",
-                "baseUrl": "https://ai.exa.edu.kg/v1",
+                "baseUrl": "",
                 "apiKey": "",
                 "provider": "generic-chat-completion-api",
                 "maxOutputTokens": 65536,
@@ -393,9 +394,21 @@ jobs:
             ]
           }
           SETTINGS_EOF
-          # Inject the API key from environment variable to avoid logging it
-          python3 -c "import json, os; settings_file = '$HOME/.factory/settings.json'; data = json.load(open(settings_file)); data['customModels'][0]['apiKey'] = os.environ['NVIDIA_KONG_PROXY_KEY']; f=open(settings_file, 'w'); json.dump(data, f, indent=2); f.close()"
-          echo "BYOM settings written to ~/.factory/settings.json with API key injection"
+          # Inject the baseUrl and API key from environment variables to avoid logging them
+          # Also inject cf-aig-authorization header for compatibility with Lumivane endpoint
+          python3 -c "
+          import json, os;
+          settings_file = '$HOME/.factory/settings.json';
+          data = json.load(open(settings_file));
+          data['customModels'][0]['baseUrl'] = os.environ['LUMIVANE_BASE_URL'];
+          data['customModels'][0]['apiKey'] = os.environ['LUMIVANE_KONG_KEY'];
+          if 'extraHeaders' not in data['customModels'][0]:
+              data['customModels'][0]['extraHeaders'] = {};
+          data['customModels'][0]['extraHeaders']['cf-aig-authorization'] = 'Bearer ' + os.environ['LUMIVANE_CFAT'];
+          f=open(settings_file, 'w');
+          json.dump(data, f, indent=2);
+          f.close()"
+          echo "BYOM settings written to ~/.factory/settings.json with API key and extraHeaders injection"
           python3 -c "import json; json.load(open('$HOME/.factory/settings.json')); print('JSON validation passed')"
 
       - name: Pre-check credentials
