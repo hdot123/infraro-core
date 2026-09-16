@@ -4,6 +4,7 @@ INFRA-213: Tests the scanner liveness check (gh run list) and main() orchestrati
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -696,6 +697,78 @@ def test_resolve_cleared_alerts_skips_duplicate_comment_close_fails():
     # Verify no duplicate comment was posted
     comment_calls = [c for c in mock_run.call_args_list if "comment" in c.args[0]]
     assert len(comment_calls) == 0, "Should not post duplicate self-heal comment"
+
+
+# ---------------------------------------------------------------------------
+# r38 consumer-template-reconciliation: scanner workflow filename env override
+# ---------------------------------------------------------------------------
+
+
+def test_scanner_workflow_default_is_contract_name():
+    """r38: without env override, SCANNER_WORKFLOW is the engine contract name."""
+    assert evolution_heartbeat.SCANNER_WORKFLOW_DEFAULT == "evolution-scan.yml"
+    # Module was imported without EVOLUTION_SCANNER_WORKFLOW set in this suite,
+    # so the resolved constant equals the default.
+    assert evolution_heartbeat.SCANNER_WORKFLOW == "evolution-scan.yml"
+
+
+def test_scanner_workflow_env_override_respected():
+    """r38: EVOLUTION_SCANNER_WORKFLOW overrides the probed/dispatched filename."""
+    import importlib
+
+    old = os.environ.pop("EVOLUTION_SCANNER_WORKFLOW", None)
+    try:
+        os.environ["EVOLUTION_SCANNER_WORKFLOW"] = "scan.yml"
+        mod = importlib.reload(evolution_heartbeat)
+        assert mod.SCANNER_WORKFLOW == "scan.yml"
+    finally:
+        if old is None:
+            os.environ.pop("EVOLUTION_SCANNER_WORKFLOW", None)
+        else:
+            os.environ["EVOLUTION_SCANNER_WORKFLOW"] = old
+        importlib.reload(evolution_heartbeat)
+
+
+def test_scanner_workflow_env_override_whitespace_only_falls_back():
+    """r38: blank/whitespace env value falls back to the contract default."""
+    import importlib
+
+    old = os.environ.pop("EVOLUTION_SCANNER_WORKFLOW", None)
+    try:
+        os.environ["EVOLUTION_SCANNER_WORKFLOW"] = "   "
+        mod = importlib.reload(evolution_heartbeat)
+        assert mod.SCANNER_WORKFLOW == "evolution-scan.yml"
+    finally:
+        if old is None:
+            os.environ.pop("EVOLUTION_SCANNER_WORKFLOW", None)
+        else:
+            os.environ["EVOLUTION_SCANNER_WORKFLOW"] = old
+        importlib.reload(evolution_heartbeat)
+
+
+def test_scanner_workflow_env_override_used_in_liveness_probe(monkeypatch):
+    """r38: check_scanner_liveness probes the overridden filename."""
+    monkeypatch.setattr(evolution_heartbeat, "SCANNER_WORKFLOW", "scan.yml")
+    runs = [_recent_run(0.5, "success")]
+    with patch("evolution_heartbeat.subprocess.run") as mock_run:
+        mock_run.return_value = _gh_result(json.dumps(runs))
+        result = evolution_heartbeat.check_scanner_liveness()
+
+    assert result["alive"] is True
+    probed_workflow = mock_run.call_args[0][0][mock_run.call_args[0][0].index("--workflow") + 1]
+    assert probed_workflow == "scan.yml"
+
+
+def test_scanner_workflow_env_override_used_in_self_heal_dispatch(monkeypatch):
+    """r38: trigger_scanner_dispatch targets the overridden filename."""
+    monkeypatch.setattr(evolution_heartbeat, "SCANNER_WORKFLOW", "scan.yml")
+    with patch("evolution_heartbeat.subprocess.run") as mock_run:
+        mock_run.return_value = _gh_result(returncode=0)
+        result = evolution_heartbeat.trigger_scanner_dispatch()
+
+    assert result == (True, None)
+    args = mock_run.call_args[0][0]
+    assert args[-1] == "scan.yml"
 
 
 # ---------------------------------------------------------------------------
