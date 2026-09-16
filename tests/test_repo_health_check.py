@@ -61,10 +61,13 @@ def test_repo_health_check_checks_uvlock_root_version_alignment() -> None:
         if drifted == original:
             # Use a more robust pattern matching approach
             import re
-            pattern = rf'(\[\[package\]\]\s*\nname\s*=\s*"{re.escape(pyproject_name)}"\s*\nversion\s*=\s*")([^"]+)(")'
-            drifted = re.sub(pattern, r'\g<1>0.0.1\g<3>', original)
 
-        assert drifted != original, "test fixture failed to construct drift - original and drifted content are identical"
+            pattern = rf'(\[\[package\]\]\s*\nname\s*=\s*"{re.escape(pyproject_name)}"\s*\nversion\s*=\s*")([^"]+)(")'
+            drifted = re.sub(pattern, r"\g<1>0.0.1\g<3>", original)
+
+        assert drifted != original, (
+            "test fixture failed to construct drift - original and drifted content are identical"
+        )
         lock_path.write_text(drifted, encoding="utf-8")
 
         result = subprocess.run(
