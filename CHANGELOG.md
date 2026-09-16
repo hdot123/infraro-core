@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.19.0](https://github.com/hdot123/infraro-core/compare/v0.18.4...v0.19.0) (2026-09-16)
+
+
+### Features
+
+* engine-substrate-boundary - desensitize IP whitelists and host paths ([#26](https://github.com/hdot123/infraro-core/issues/26)) ([0c92d34](https://github.com/hdot123/infraro-core/commit/0c92d34bbe44dc943a42362d1e340d833b9e31ab))
+* **engine:** snake-only convergence for workflow_call inputs/secrets ([#32](https://github.com/hdot123/infraro-core/issues/32)) ([c61f798](https://github.com/hdot123/infraro-core/commit/c61f7985a131b0d2f0ad4b46a975e8ce010a0f77))
+* substrate gate suite (0-4) for engine repository ([#21](https://github.com/hdot123/infraro-core/issues/21)) ([7a82aef](https://github.com/hdot123/infraro-core/commit/7a82aefbaed732124ee6681902c50788d376c2cd))
+
+
+### Bug Fixes
+
+* complete substrate-r1-fix-boundary by registering .github/ runner mentions ([#29](https://github.com/hdot123/infraro-core/issues/29)) ([3c2b1b2](https://github.com/hdot123/infraro-core/commit/3c2b1b235957a3952a851440962a65eaf33100ea))
+* **gh-proxy:** align IP placeholder literal to unblock contract tests ([#30](https://github.com/hdot123/infraro-core/issues/30)) ([a87c81c](https://github.com/hdot123/infraro-core/commit/a87c81ce86a81c6c8e0d21e0e064cf9e06cf06e2))
+* remove release-as line to unstick v0.18.5 release ([#40](https://github.com/hdot123/infraro-core/issues/40)) ([34f9d19](https://github.com/hdot123/infraro-core/commit/34f9d19c07ccb9a55288edfda5f3466f6a8bb45b))
+* **substrate:** gh-proxy comma-separated ALLOWED_IPS + file-level gate3 exposure stock ([#31](https://github.com/hdot123/infraro-core/issues/31)) ([bc2eedf](https://github.com/hdot123/infraro-core/commit/bc2eedfa4138a96579c77b14da45f772d1ae16b4))
+
 ## [0.18.4](https://github.com/hdot123/infraro-core/compare/v0.18.4...v0.18.4) (2026-09-16)
 
 
