@@ -60,15 +60,17 @@ def test_scan_reusable_triggers_and_self_scan_schedule():
 
 
 def test_scan_reusable_secrets_contract():
-    """VAL-GATE-113：secrets 显式声明（reusable 不隐式继承 caller secrets）
-    + 双形态键（CONSUMER-GATE-DEADLOCK 修复）：caller 未声明键即 run 级
-    startup_failure，hyphen 变体必须并存且可选。"""
+    """VAL-GATE-113：secrets 显式声明（reusable 不隐式继承 caller secrets），
+    snake 单形态（SNAKE-CONVERGENCE v0.18.5）：caller 传未声明键即 run 级
+    startup_failure；旧 hyphen 过渡变体已随蛇形收敛立法删除。"""
     secrets = _triggers(_load(_SCAN))["workflow_call"]["secrets"]
     assert secrets["dispatch_token"]["required"] is True
     assert secrets["linear_api_key"]["required"] is False
-    # hyphen 过渡变体（memory #1075 双写 caller 期间 callee 必须接受两形态）
-    assert secrets["dispatch-token"]["required"] is False
-    assert secrets["linear-api-key"]["required"] is False
+    # hyphen 过渡变体必须保持删除（snake 单形态立法）
+    assert "dispatch-token" not in secrets
+    assert "linear-api-key" not in secrets
+    for key in secrets:
+        assert "-" not in key and key == key.lower(), f"secrets 键必须 snake 小写: {key}"
 
 
 def test_scan_reusable_job_permissions_and_runner():
@@ -79,12 +81,12 @@ def test_scan_reusable_job_permissions_and_runner():
 
 def test_scan_reusable_env_contract():
     """VAL-GATE-108 环境契约：DISPATCH_TOKEN / LINEAR_API_KEY / PYTHONSAFEPATH 映射
-    （双形态熔合：secrets.x_snake || secrets['x-hyphen']）。"""
+    （snake 单读：secrets.x_snake，SNAKE-CONVERGENCE 后熔合表达式归零）。"""
     steps = _scan_steps(_load(_SCAN))
     run_step = steps["Run evolution scanner"]
     env = run_step["env"]
-    assert env["GH_TOKEN"] == "${{ secrets.dispatch_token || secrets['dispatch-token'] }}"
-    assert env["LINEAR_API_KEY"] == "${{ secrets.linear_api_key || secrets['linear-api-key'] }}"
+    assert env["GH_TOKEN"] == "${{ secrets.dispatch_token }}"
+    assert env["LINEAR_API_KEY"] == "${{ secrets.linear_api_key }}"
     assert env["PYTHONSAFEPATH"] == "1"
 
 
@@ -121,7 +123,7 @@ def test_scan_reusable_label_ensure_found_and_isolated():
     """label-ensure 契约：evolution-found FBCA04 / evolution-isolated B60205 + 显式 --repo。"""
     steps = _scan_steps(_load(_SCAN))
     ensure = steps["Ensure labels exist"]
-    assert ensure["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token || secrets['dispatch-token'] }}"
+    assert ensure["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token }}"
     run = ensure["run"]
     assert 'gh --repo "$GITHUB_REPOSITORY" label create "evolution-found" --color FBCA04' in run
     assert 'gh --repo "$GITHUB_REPOSITORY" label create "evolution-isolated" --color B60205' in run
@@ -304,15 +306,15 @@ def test_invariants_regression():
     # (a) 文件名/name 字节级
     assert scan_data["name"] == "Evolution Scan Reusable"
     assert hb_data["name"] == "Evolution Heartbeat Reusable"
-    # (b) secrets 双形态键
+    # (b) secrets snake 单形态键（SNAKE-CONVERGENCE 后 hyphen 变体保持删除）
     scan_secrets = _triggers(scan_data)["workflow_call"]["secrets"]
     assert "dispatch_token" in scan_secrets
-    assert "dispatch-token" in scan_secrets
     assert "linear_api_key" in scan_secrets
-    assert "linear-api-key" in scan_secrets
+    assert "dispatch-token" not in scan_secrets
+    assert "linear-api-key" not in scan_secrets
     hb_secrets = _triggers(hb_data)["workflow_call"]["secrets"]
     assert "dispatch_token" in hb_secrets
-    assert "dispatch-token" in hb_secrets
+    assert "dispatch-token" not in hb_secrets
     # (c) callee 无顶层 concurrency
     assert "concurrency" not in scan_data
     assert "concurrency" not in hb_data
@@ -356,28 +358,24 @@ def test_heartbeat_reusable_triggers_and_self_scan_schedule():
 
 
 def test_heartbeat_reusable_secrets_and_engine():
-    """dispatch_token 必填（M5 R1(3) snake_case）+ 双形态 hyphen 变体 + 执行体为
+    """dispatch_token 必填（M5 R1(3) snake_case，单形态立法）+ 执行体为
     infra-core heartbeat 引擎模块。"""
     data = _load(_HEARTBEAT)
     secrets = _triggers(data)["workflow_call"]["secrets"]
     assert secrets["dispatch_token"]["required"] is True
-    assert secrets["dispatch-token"]["required"] is False, (
-        "必须声明 hyphen 过渡变体 dispatch-token（双形态并存，防单侧删键）"
-    )
+    assert "dispatch-token" not in secrets, "hyphen 过渡变体必须保持删除（snake 单形态立法）"
     job = data["jobs"]["heartbeat"]
     assert job["runs-on"] == "ubuntu-latest"
     run_step = {s.get("name", ""): s for s in job["steps"]}["Run heartbeat check"]
     assert run_step["run"] == "python -m infra_core.engine.evolution_heartbeat"
-    assert (
-        run_step["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token || secrets['dispatch-token'] }}"
-    )
+    assert run_step["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token }}"
     assert run_step["env"]["PYTHONSAFEPATH"] == "1"
 
 
 def test_heartbeat_reusable_label_ensure_heartbeat_label():
     steps = {s.get("name", ""): s for s in _load(_HEARTBEAT)["jobs"]["heartbeat"]["steps"]}
     ensure = steps["Ensure labels exist"]
-    assert ensure["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token || secrets['dispatch-token'] }}"
+    assert ensure["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token }}"
     assert (
         'gh --repo "$GITHUB_REPOSITORY" label create "evolution-heartbeat" --color D93F0B'
         in ensure["run"]

@@ -238,27 +238,26 @@ class TestReusablePipelineTemplateContract:
         assert "conclusion == 'success'" not in raw
         assert "event_name == 'workflow_run' &&" not in raw
 
-    def test_dispatch_token_dual_form_declared_optional(self) -> None:
-        """双形态键声明（CONSUMER-GATE-DEADLOCK 修复 2026-08-30）。
+    def test_dispatch_token_snake_single_form_declared(self) -> None:
+        """snake 单形态键声明（SNAKE-CONVERGENCE v0.18.5 立法）。
 
         GitHub 对 caller secrets: 传键做声明面严格校验——caller 传了未声明键
-        → run 级 startup_failure（零 job）。memory #1075 双写 caller
-        （dispatch_token + dispatch-token 并传）× 单侧声明 callee 即
-        04:40Z auto-merge 断链根因。两形态均声明且 required: false：
-        memory main auto-merge.yml 在 #1076 合并前仅传 hyphen 形态
-        （INFRA-636），required snake 会把 #1076/#1077 唯一的自动合并通道
-        挡死；缺凭证的 fail-closed 语义由运行时合并步凭证失败保持。
+        → run 级 startup_failure（零 job）。历史上 callee 曾双形态声明
+        （dispatch_token + dispatch-token 并存，CONSUMER-GATE-DEADLOCK 修复
+        2026-08-30）；v0.18.5 蛇形收敛立法后 hyphen 过渡变体全部删除，
+        dispatch_token 是唯一声明键且 required: true——缺凭证的 fail-closed
+        语义由运行时合并步凭证失败保持，未声明键在 plan-time 即 fail-fast。
         """
         pipeline_data = _load_doc(AUTO_MERGE_PIPELINE_YML)
         secrets_block = pipeline_data[True]["workflow_call"].get("secrets", {})
         assert "dispatch_token" in secrets_block, (
-            "必须声明 dispatch_token secret 输入（M5 R1(3) snake_case 统一）"
+            "必须声明 dispatch_token secret 输入（snake 单形态）"
         )
-        assert "dispatch-token" in secrets_block, (
-            "必须声明 hyphen 过渡变体 dispatch-token（双形态并存，防单侧删键）"
-        )
-        assert secrets_block["dispatch_token"]["required"] is False
-        assert secrets_block["dispatch-token"]["required"] is False
+        assert secrets_block["dispatch_token"]["required"] is True
+        for key in secrets_block:
+            assert "-" not in key and key == key.lower(), (
+                f"workflow_call secrets 键必须 snake 小写单形态，违例: {key}"
+            )
 
     def test_job_topology(self) -> None:
         jobs = _load_doc(AUTO_MERGE_PIPELINE_YML)["jobs"]
@@ -311,20 +310,21 @@ class TestReusablePipelineTemplateContract:
             if re.search(r"/actions/auto-merge@[0-9a-f]{40}", str(s.get("uses", "")))
         )
         env = merge_step.get("env", {})
-        assert env.get("GITHUB_TOKEN") == (
-            "${{ secrets.dispatch_token || secrets['dispatch-token'] }}"
-        ), (
-            "merge 步 GITHUB_TOKEN env 必须经 dispatch_token 双形态熔合传入，"
+        assert env.get("GITHUB_TOKEN") == "${{ secrets.dispatch_token }}", (
+            "merge 步 GITHUB_TOKEN env 必须经 dispatch_token snake 单读传入，"
             f"实际: {env.get('GITHUB_TOKEN')}"
         )
 
-    def test_no_bare_snake_secret_consumption(self) -> None:
-        """声明了 hyphen 变体的 snake 键，消费点一律熔合，禁止裸取（防漏熔合）。"""
+    def test_no_secret_fusion_expressions(self) -> None:
+        """SNAKE-CONVERGENCE 立法：secrets 消费点一律 snake 单读，熔合表达式归零。
+
+        旧双形态过渡期曾要求 `secrets.dispatch_token || secrets['dispatch-token']`
+        熔合；v0.18.5 收敛后 hyphen 变体已删，任何 `|| secrets.` 回退或
+        `secrets['...']` 括号取键形态都算回潮违例。
+        """
         raw = AUTO_MERGE_PIPELINE_YML.read_text(encoding="utf-8")
-        assert "${{ secrets.dispatch_token }}" not in raw, (
-            "dispatch_token 存在裸取消费点——必须熔合 "
-            "secrets.dispatch_token || secrets['dispatch-token']"
-        )
+        assert "|| secrets." not in raw, "secrets 消费点不得保留熔合表达式（|| secrets.）"
+        assert "secrets['" not in raw, "secrets 消费点不得使用括号取键形态（secrets['…']）"
 
     def test_permissions_block(self) -> None:
         perms = _load_doc(AUTO_MERGE_PIPELINE_YML).get("permissions", {})

@@ -1042,7 +1042,10 @@ def test_workflow_calls_composite_action():
     assert "inputs.branch" in with_map["trigger-branch"]
     assert "github.event.pull_request.head.ref" in with_map["trigger-branch"]
     # Token forwarding (branch deletion + issue management)
-    assert with_map["dispatch-token"] == "${{ secrets.DISPATCH_TOKEN }}"
+    # SNAKE-CONVERGENCE (v0.18.5): secrets 引用统一小写 snake
+    # （GHA secrets 上下文大小写不敏感，with: 键仍为 composite action 契约 kebab）
+    assert with_map["dispatch-token"] == "${{ secrets.dispatch_token }}"
+    assert with_map["linear-api-key"] == "${{ secrets.linear_api_key }}"
 
     steps_blob = "\n".join(str(s) for s in steps)
     assert "scripts/branch_cleanup.sh" not in steps_blob, (

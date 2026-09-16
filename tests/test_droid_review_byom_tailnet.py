@@ -1,8 +1,8 @@
 """droid-review BYOM public endpoint routing test（F2 round 7 fix）。
 
-Regression protection: BYOM LLM call baseUrl must use the public BYOM
-endpoint (injected from LUMIVANE_BASE_URL secret via CF Worker reverse
-proxy), with real API key injection to enable hosted runner access.
+Regression protection: BYOM LLM call baseUrl must use public endpoint
+(https://ai.lumivane.dpdns.org/v1 via CF AiGateway), with real API key
+injection to enable hosted runner access.
 
 Background: Original tailnet-only endpoint (node1.tail5e888.ts.net) is not
 accessible from hosted runners (ubuntu-latest), causing droid exec timeout
@@ -110,42 +110,22 @@ class TestByomPublicRouting:
     """
 
     def test_baseurl_points_to_public_kong(self, wf_path):
-        """Configuration must source its baseUrl from LUMIVANE_BASE_URL environment variable injection."""
+        """baseUrl must be https://ai.lumivane.dpdns.org/custom-node01/v1 (public CF AiGateway)."""
         settings = _load_settings(wf_path)
         model = settings["customModels"][0]
-        # The template contains empty placeholders, which are later populated via environment variables
-        # Check that the structure is correct and will be populated by the Python injection script
-        assert isinstance(model["baseUrl"], str), (
-            "baseUrl field must be a string (placeholder for injection)"
-        )
-        # Additionally verify that the Python script correctly injects the expected URL by checking that the injection code is present
-        run_script = _get_byom_step(wf_path)["run"]
-        assert "LUMIVANE_BASE_URL" in run_script, (
-            "Python injection script must use LUMIVANE_BASE_URL environment variable"
-        )
-        assert "os.environ['LUMIVANE_BASE_URL']" in run_script, (
-            "baseUrl must be injected from LUMIVANE_BASE_URL environment variable"
+        assert model["baseUrl"] == "https://ai.lumivane.dpdns.org/custom-node01/v1", (
+            "BYOM baseUrl must use public endpoint for hosted runner access: "
+            "tailnet-only endpoint node1.tail5e888.ts.net is not accessible from ubuntu-latest"
         )
 
     def test_public_endpoint_present_in_active_config(self, wf_path):
-        """Active configuration must assert env injection chain (secret→env→settings.json) is complete."""
-        # Check that the Python injection script is present and correctly references the environment variables
-        run_script = _get_byom_step(wf_path)["run"]
-
-        # Verify that the environment variable injection chain is intact
-        has_base_url_injection = "os.environ['LUMIVANE_BASE_URL']" in run_script
-        has_kong_key_injection = "os.environ['LUMIVANE_KONG_KEY']" in run_script
-        has_cfat_injection = "os.environ['LUMIVANE_CFAT']" in run_script
-        has_cfat_auth_header = "'cf-aig-authorization'" in run_script
-
-        assert (
-            has_base_url_injection
-            and has_kong_key_injection
-            and has_cfat_injection
-            and has_cfat_auth_header
-        ), (
-            "BYOM configuration must include complete env injection chain: "
-            "LUMIVANE_BASE_URL, LUMIVANE_KONG_KEY, LUMIVANE_CFAT injection with cf-aig-authorization header"
+        """Active configuration (heredoc JSON block) must include public endpoint."""
+        block = _extract_settings_block(wf_path)
+        assert "ai.lumivane.dpdns.org" in block, (
+            "Active BYOM configuration must reference public endpoint ai.lumivane.dpdns.org"
+        )
+        assert "custom-node01" in block, (
+            "Active BYOM configuration must reference correct path ai.lumivane.dpdns.org/custom-node01/v1"
         )
 
     def test_settings_block_is_valid_json(self, wf_path):
@@ -167,7 +147,7 @@ class TestByomPublicRouting:
     def test_python_api_key_injection_present(self, wf_path):
         """Verify that the python API key injection script is present in the run block."""
         run_script = _get_byom_step(wf_path)["run"]
-        assert "python3 -c" in run_script and "LUMIVANE_KONG_KEY" in run_script, (
+        assert "python3 -c" in run_script and "NVIDIA_KONG_PROXY_KEY" in run_script, (
             "BYOM settings must include python script to inject API key from environment variable"
         )
 

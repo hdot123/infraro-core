@@ -24,7 +24,9 @@
 | `watchdog.yml` | per-key | hdot123 | declaration-template-interface-fix | 传未声明键 engine_ref + 未声明 secrets dispatch_token/dispatch-token + 缺必填 mode/run_id/run_attempt（run 级 startup_failure） |
 | `droid-review.yml` | per-key | hdot123 | declaration-template-interface-fix | 必填 secret FACTORY_API_KEY 从不到达引擎 shards（零 secrets 转发） |
 | `governance.yml` | per-key | hdot123 | declaration-template-interface-fix | 缺 action 必填输入 protected-patterns |
-| `docs/onboarding/consumer-onboarding.md` | dead-ref | hdot123 | declaration-template-interface-fix | 门1 死引用两处：evolution-scan.yml@v0.15.0 与 pip install ...@v0.15.0（125/134 行，引擎文档面） |
+| `auto-merge.yml` | per-key | hdot123 | docs-snake-remirror-v0.18.5 | 引擎 snake 收敛后传未声明 secret dispatch-token（kebab 转发待 S3 重镜像） |
+| `heartbeat.yml` | per-key | hdot123 | docs-snake-remirror-v0.18.5 | 引擎 snake 收敛后传未声明 secret dispatch-token（kebab 转发待 S3 重镜像） |
+| `scan.yml` | per-key | hdot123 | docs-snake-remirror-v0.18.5 | 引擎 snake 收敛后传未声明 secrets dispatch-token/linear-api-key（kebab 转发待 S3 重镜像） |
 
 ## Gate 2: registered stock + LOCAL-ONE items
 

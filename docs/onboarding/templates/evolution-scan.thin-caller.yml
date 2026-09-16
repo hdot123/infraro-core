@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   scan:
-    uses: hdot123/infraro-core/.github/workflows/evolution-scan.yml@v0.15.0
+    uses: hdot123/infraro-core/.github/workflows/evolution-scan.yml@2225716d6b1b80c354180e766ac79e4220dbd941 # v0.18.4
     permissions:
       contents: read
       issues: write

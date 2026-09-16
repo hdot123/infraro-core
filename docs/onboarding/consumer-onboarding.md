@@ -122,7 +122,7 @@ Repo **variables**（`gh api repos/<org>/<repo>/actions/variables`）按需配�
 
 **workflow 引用（`@tag`）是引擎版本的唯一主真源**（SHA 级）。消费仓在 thin-caller 的
 `uses:` 行引用 infra-core reusable workflow（如
-`hdot123/infraro-core/.github/workflows/evolution-scan.yml@v0.15.0`），
+`hdot123/infraro-core/.github/workflows/evolution-scan.yml@v0.18.4`），
 reusable workflow 内部通过 `job.workflow_sha`（定义当前 job 的 workflow 文件 commit，
 官方文档语义）解析出引擎 commit SHA，经 `pip install git+https://…infraro-core.git@<ref>`
 直接交付。PEP 610 `direct_url.json` 的 `vcs_info.commit_id` 双断言防 pip 同版本静默跳过。
@@ -131,7 +131,7 @@ reusable workflow 内部通过 `job.workflow_sha`（定义当前 job 的 workflo
 
 ```toml
 dependencies = [
-    "infra-core @ git+https://github.com/hdot123/infraro-core.git@v0.15.0",
+    "infra-core @ git+https://github.com/hdot123/infraro-core.git@v0.18.4",
 ]
 ```
 
