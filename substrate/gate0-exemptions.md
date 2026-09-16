@@ -32,18 +32,10 @@
 
 | Item | Kind | Owner | Owning feature | Detail |
 |---|---|---|---|---|
-| `residual branch: feature/INFRA-1022-silent-swallow-fix` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
-| `residual branch: fix/INFRA-1037-silent-swallow-batch-3` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（全域分支清剿时清） |
-| `residual branch: fix/INFRA-1057-deduplicate-test_helpers` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
-| `closed PR #1273` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并已关闭 PR（INFRA-1057；清剿时随分支一并处置） |
-| `closed PR #1275` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并已关闭 PR（INFRA-1060；清剿时随分支一并处置） |
-| `residual branch: fix/infra-1060-duplicate-make-git-repo` | stock | hdot123 | legacy-repo-disposition | 冻结仓 memory 未合并分支（首跑后新增，全域分支清剿时清） |
 | `missing from repositories.yml` | LOCAL-ONE | hdot123 | substrate-inventory-bookkeeping | 本地 registry 对账面（CI 不可见），声明仓待补登 |
 | `ERROR_REPO_MAP` | LOCAL-ONE | hdot123 | substrate-foundations-linear-webhook | Worker 路由双侧一致性为本地/私有面（hdot123/webhook 私有，CI token 不可读） |
 
-注：hdot123-org 三冻结仓 GitHub 可见面本首跑实况 = infra-core 清洁（0 PR/0 残留分支）、
-mencbo 清洁、memory 残留 6 项（4 分支 + 2 PR，上行登记）。legacy-repo-disposition 清完请删除对应行，
-使后续新漂移直接转红。
+注：hdot123-org 三冻结仓 GitHub 可见面 residual branches 与 closed PR 已由 legacy-repo-disposition 清零，旧世界终局封存（old-world-archive-endgame）前仅存 LOCAL-ONE 项。后续新漂移直接转红。
 
 ## Gate 3: registered exposure stock (path prefixes)
 
