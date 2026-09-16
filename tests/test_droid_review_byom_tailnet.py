@@ -110,10 +110,10 @@ class TestByomPublicRouting:
     """
 
     def test_baseurl_points_to_public_kong(self, wf_path):
-        """baseUrl must be https://ai.lumivane.dpdns.org/v1 (public CF AiGateway)."""
+        """baseUrl must be https://ai.lumivane.dpdns.org/custom-node01/v1 (public CF AiGateway)."""
         settings = _load_settings(wf_path)
         model = settings["customModels"][0]
-        assert model["baseUrl"] == "https://ai.lumivane.dpdns.org/v1", (
+        assert model["baseUrl"] == "https://ai.lumivane.dpdns.org/custom-node01/v1", (
             "BYOM baseUrl must use public endpoint for hosted runner access: "
             "tailnet-only endpoint node1.tail5e888.ts.net is not accessible from ubuntu-latest"
         )
@@ -123,6 +123,9 @@ class TestByomPublicRouting:
         block = _extract_settings_block(wf_path)
         assert "ai.lumivane.dpdns.org" in block, (
             "Active BYOM configuration must reference public endpoint ai.lumivane.dpdns.org"
+        )
+        assert "custom-node01" in block, (
+            "Active BYOM configuration must reference correct path ai.lumivane.dpdns.org/custom-node01/v1"
         )
 
     def test_settings_block_is_valid_json(self, wf_path):

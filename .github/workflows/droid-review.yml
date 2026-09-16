@@ -229,6 +229,7 @@ jobs:
         shard: ${{ fromJSON(needs.plan-shards.outputs.shards) }}
     env:
       NVIDIA_KONG_PROXY_KEY: ${{ secrets.NVIDIA_KONG_PROXY_KEY }}
+      LUMIVANE_CFAT: ${{ secrets.LUMIVANE_CFAT }}
     permissions:
       contents: read      # checkout (BASE + HEAD)
       actions: write      # upload-artifact (debug transcripts)
@@ -384,17 +385,20 @@ jobs:
               {
                 "model": "qwen3.7-plus",
                 "displayName": "Bailian Qwen 3.7 Plus",
-                "baseUrl": "https://ai.lumivane.dpdns.org/v1",
+                "baseUrl": "https://ai.lumivane.dpdns.org/custom-node01/v1",
                 "apiKey": "",
                 "provider": "generic-chat-completion-api",
                 "maxOutputTokens": 65536,
-                "noImageSupport": true
+                "noImageSupport": true,
+                "extraHeaders": {
+                  "cf-aig-authorization": "Bearer ${LUMIVANE_CFAT}"
+                }
               }
             ]
           }
           SETTINGS_EOF
-          # Inject the API key from environment variable to avoid logging it
-          python3 -c "import json, os; settings_file = '$HOME/.factory/settings.json'; data = json.load(open(settings_file)); data['customModels'][0]['apiKey'] = os.environ['NVIDIA_KONG_PROXY_KEY']; f=open(settings_file, 'w'); json.dump(data, f, indent=2); f.close()"
+          # Inject the API keys from environment variables to avoid logging them
+          python3 -c "import json, os; settings_file = '$HOME/.factory/settings.json'; data = json.load(open(settings_file)); data['customModels'][0]['apiKey'] = os.environ['NVIDIA_KONG_PROXY_KEY']; data['customModels'][0]['extraHeaders']['cf-aig-authorization'] = 'Bearer ' + os.environ['LUMIVANE_CFAT']; f=open(settings_file, 'w'); json.dump(data, f, indent=2); f.close()"
           echo "BYOM settings written to ~/.factory/settings.json with API key injection"
           python3 -c "import json; json.load(open('$HOME/.factory/settings.json')); print('JSON validation passed')"
 
