@@ -29,7 +29,15 @@ ALERT_LABEL = "evolution-heartbeat"
 EVOLUTION_FOUND_LABEL = "evolution-found"
 HEARTBEAT_MARKER_PATH = Path(".evolution/heartbeat.json")
 MONITOR_HEARTBEAT_PATH = Path(".evolution/monitor_heartbeat.json")
-SCANNER_WORKFLOW = "evolution-scan.yml"
+SCANNER_WORKFLOW_DEFAULT = "evolution-scan.yml"
+# r38 consumer-template-reconciliation: consumer repos whose scanner thin-caller
+# filename differs from the engine contract name can override via env var
+# (EVOLUTION_SCANNER_WORKFLOW, set by the evolution-heartbeat.yml reusable's
+# scanner_workflow input). Falls back to the contract default so existing
+# consumers (and the engine repo's own self-scan) are unaffected.
+SCANNER_WORKFLOW = (
+    os.environ.get("EVOLUTION_SCANNER_WORKFLOW", "").strip() or SCANNER_WORKFLOW_DEFAULT
+)
 SCANNER_LIVENESS_THRESHOLD_HOURS = 2  # Alert if scanner hasn't run in 2 hours
 # INFRA-597: successful self-heal dispatch only suppresses the alert below this
 # outage severity. Beyond it, the stale signal is no longer "cron load-shed
