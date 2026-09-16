@@ -105,7 +105,7 @@ scanner 读取该文件后会跳过 `suppressed` 列表中的 finding（按 rule
 |---|---|---|
 | `DISPATCH_TOKEN` | PAT（owner 身份）：Issue/label 写入、auto-merge、self-heal | scan / heartbeat / branch-cleanup / auto-merge |
 | `FACTORY_API_KEY` | droid-review BYOM 调用 | droid-review 系 |
-| `NVIDIA_KONG_PROXY_KEY` | droid-review BYOM 内网代理 | droid-review 系 |
+| `LUMIVANE_KONG_KEY` | droid-review BYOM 公网代理 | droid-review 系 |
 | `LINEAR_API_KEY` | Linear 状态核验（auto_close_resolved fail-closed） | scan / branch-cleanup |
 | `N8N_CI_WEBHOOK_URL` | CI 完成后 webhook 网关（CF Worker）路由（secret 名为历史资产名，退役收尾时更名） | 仅宿主 webhook 子系统 |
 | `N8N_CI_TOKEN` | webhook 网关认证（历史资产名，同上） | 仅宿主 webhook 子系统 |
