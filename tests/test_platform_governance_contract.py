@@ -338,14 +338,18 @@ _ENFORCEMENT_ACTIVE = {"active", "enabled"}
 # 只改锚点 → 静态断言红；只改静态字面量 → 与锚点不一致即红。两处同改
 # 则等同显式重写治理基线，须过评审。
 _F8_RULESET_NAME = "main-branch-protection"
-_F8_REF_NAME_INCLUDE = ("refs/heads/main",)
-_F8_RSC_CHECKS_ANCHOR = frozenset({})
+# r34b 用户裁定终态（2026-09-16，mission AGENTS.md）：条件迁移为默认分支语义锚
+_F8_REF_NAME_INCLUDE = ("~DEFAULT_BRANCH",)
+# r34b 终态：required = 纯聚合 + 评审层（ci-ok / qa-ok / droid-review）
+_F8_RSC_CHECKS_ANCHOR = frozenset({"ci-ok", "qa-ok", "droid-review"})
 _F8_ALLOWED_MERGE_METHODS_ANCHOR = ("squash",)
 _F8_RULE_TYPES_ANCHOR = frozenset(
     {
         "deletion",
         "non_fast_forward",
         "pull_request",
+        "required_linear_history",
+        "required_status_checks",
     }
 )
 _F8_MERGE_SETTINGS_ANCHOR = {
@@ -480,19 +484,30 @@ class TestRulesetsFiveRuleTypes:
     """VAL-M3-014: 三类规则齐全且参数正确。"""
 
     def test_required_status_checks_parameters(self):
-        """required_status_checks should be empty (as per v3 contract)."""
+        """required = [ci-ok, qa-ok, droid-review]，strict policy（r34b 终态）。"""
         _skip_if_no_rulesets()
         detail = _get_ruleset_detail(_find_ruleset_id())
         rsc_rules = [r for r in detail["rules"] if r["type"] == "required_status_checks"]
-        assert len(rsc_rules) == 0, "根据 v3 合约，不应有 required_status_checks 规则（为空）"
+        assert len(rsc_rules) == 1, (
+            f"应有恰好一个 required_status_checks 规则（r34b 终态）, 实际 {len(rsc_rules)} 个"
+        )
+        params = rsc_rules[0]["parameters"]
+        contexts = {c["context"] for c in params["required_status_checks"]}
+        assert contexts == set(_F8_RSC_CHECKS_ANCHOR), (
+            f"required_status_checks 应为 {sorted(_F8_RSC_CHECKS_ANCHOR)}（纯聚合 + 评审层）, "
+            f"实际 {sorted(contexts)}"
+        )
+        assert params.get("strict_required_status_checks_policy") is True, (
+            "strict_required_status_checks_policy 应为 True (r34b 终态)"
+        )
 
     def test_required_linear_history_exists(self):
-        """required_linear_history 规则不应存在（根据 v3 合约）。"""
+        """required_linear_history 规则在场（r34b 终态，squash-only 配套）。"""
         _skip_if_no_rulesets()
         detail = _get_ruleset_detail(_find_ruleset_id())
         rule_types = [r["type"] for r in detail["rules"]]
-        assert "required_linear_history" not in rule_types, (
-            f"根据 v3 合约，rules 不应包含 required_linear_history, 实际规则类型: {rule_types}"
+        assert "required_linear_history" in rule_types, (
+            f"rules 应包含 required_linear_history (r34b 终态), 实际规则类型: {rule_types}"
         )
 
     def test_deletion_rule_exists(self):
@@ -682,20 +697,20 @@ class TestF8StaticAnchors:
             f"enforcement 归一化锚点被修改: {sorted(_ENFORCEMENT_ACTIVE)} — "
             "收窄该集合会让 disabled/evaluate 形态漏判"
         )
-        assert _F8_REF_NAME_INCLUDE == ("refs/heads/main",), (
+        assert _F8_REF_NAME_INCLUDE == ("~DEFAULT_BRANCH",), (
             f"ref_name.include 锚点被修改: {_F8_REF_NAME_INCLUDE} — "
             "改条件会让 ruleset 脱离默认分支保护面"
         )
 
     def test_required_status_checks_anchor(self) -> None:
-        """required_status_checks 锚点 = {} (empty set)。"""
-        assert _F8_RSC_CHECKS_ANCHOR == set(), (
+        """required_status_checks 锚点 = {ci-ok, qa-ok, droid-review}（r34b 终态）。"""
+        assert _F8_RSC_CHECKS_ANCHOR == {"ci-ok", "qa-ok", "droid-review"}, (
             f"required_status_checks 锚点被修改: {sorted(_F8_RSC_CHECKS_ANCHOR)} — "
             "删 check（如 qa-ok）会静默拆掉 merge 门禁"
         )
 
     def test_merge_methods_and_rule_types_anchor(self) -> None:
-        """allowed_merge_methods 仅 squash；五类规则类型齐全。"""
+        """allowed_merge_methods 仅 squash；五类规则类型齐全（r34b 终态）。"""
         assert _F8_ALLOWED_MERGE_METHODS_ANCHOR == ("squash",), (
             f"allowed_merge_methods 锚点被修改: {_F8_ALLOWED_MERGE_METHODS_ANCHOR} — "
             "扩为 merge/rebase 即拆掉 squash-only 基线"
@@ -704,6 +719,8 @@ class TestF8StaticAnchors:
             "deletion",
             "non_fast_forward",
             "pull_request",
+            "required_linear_history",
+            "required_status_checks",
         }, (
             f"五类规则类型锚点被修改: {sorted(_F8_RULE_TYPES_ANCHOR)} — 删任一规则类型"
             "（如 deletion）会静默放开对应保护面"
