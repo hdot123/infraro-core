@@ -45,15 +45,27 @@ def test_repo_health_check_checks_uvlock_root_version_alignment() -> None:
         pytest.skip("git not available")
 
     with tempfile_git_repo() as repo:
-        # 构造漂移：uv.lock 根包版本回退一个小版本
+        # 构造漂移：uv.lock 根包版本篡改为错误值
         lock_path = repo / "uv.lock"
         original = lock_path.read_text(encoding="utf-8")
+        
+        # Find the infra-core package section and change its version
+        # The structure is [[package]]\nname = "infra-core"\nversion = "0.18.5"\n...
+        pyproject_name = read_pyproject_name(repo)
         pyproject_version = read_pyproject_version(repo)
-        drifted = original.replace(
-            f'name = "{read_pyproject_name(repo)}"\nversion = "{pyproject_version}"',
-            f'name = "{read_pyproject_name(repo)}"\nversion = "0.0.1"',
-        )
-        assert drifted != original, "test fixture failed to construct drift"
+        
+        # Look for the package entry pattern that includes both name and version
+        package_marker = f'name = "{pyproject_name}"\nversion = "{pyproject_version}"'
+        drifted = original.replace(package_marker, f'name = "{pyproject_name}"\nversion = "0.0.1"')
+        
+        # Alternative approach: find the editable source package and modify its version
+        if drifted == original:
+            # Use a more robust pattern matching approach
+            import re
+            pattern = rf'(\[\[package\]\]\s*\nname\s*=\s*"{re.escape(pyproject_name)}"\s*\nversion\s*=\s*")([^"]+)(")'
+            drifted = re.sub(pattern, rf'\g<1>0.0.1\g<3>', original)
+        
+        assert drifted != original, "test fixture failed to construct drift - original and drifted content are identical"
         lock_path.write_text(drifted, encoding="utf-8")
 
         result = subprocess.run(
