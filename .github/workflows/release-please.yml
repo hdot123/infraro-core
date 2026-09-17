@@ -118,14 +118,17 @@ jobs:
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
           # Pass explicit cache dir to avoid --cache-dir error
-          # Set a default cache directory if both variables are empty
-          CACHE_DIR="${UV_CACHE_DIR:-${RUNNER_TEMP:-}}"
-          if [ -z "$CACHE_DIR" ]; then
-            CACHE_DIR="/tmp/uv-cache-$$"
+          # Ensure a cache directory is always provided to uv lock
+          if [ -n "${UV_CACHE_DIR:-}" ]; then
+            CACHE_DIR="${UV_CACHE_DIR}/uv-cache"
+          elif [ -n "${RUNNER_TEMP:-}" ]; then
+            CACHE_DIR="${RUNNER_TEMP}/uv-cache"
           else
-            CACHE_DIR="${CACHE_DIR}/uv-cache"
+            CACHE_DIR="/tmp/uv-cache-$RANDOM-$$"
           fi
           echo "Using cache directory: $CACHE_DIR"
+          # Ensure the cache directory exists
+          mkdir -p "$CACHE_DIR"
           uv lock --cache-dir="$CACHE_DIR"
 
           if git diff --quiet uv.lock; then
