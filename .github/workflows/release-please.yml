@@ -117,10 +117,9 @@ jobs:
           
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
-          # Simplest approach: just run uv lock without --cache-dir if it causes issues
-          # This should work with uv's default caching behavior
-          echo "Running uv lock without explicit cache-dir to avoid parameter error"
-          uv lock
+          # Use --no-cache to avoid cache-dir requirement
+          echo "Running uv lock with --no-cache to avoid cache-dir requirement"
+          uv lock --no-cache
 
           if git diff --quiet uv.lock; then
             echo "uv.lock already aligned; no push needed"
