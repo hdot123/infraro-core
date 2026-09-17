@@ -117,13 +117,10 @@ jobs:
           
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
-          # Direct and simple approach to avoid --cache-dir error
-          # Create cache directory using RUNNER_TEMP which should be available
-          echo "Using RUNNER_TEMP: ${RUNNER_TEMP:-NOT_SET}"
-          # Create and use a cache directory in RUNNER_TEMP
-          mkdir -p "${RUNNER_TEMP}/uv-cache"
-          echo "Running: uv lock --cache-dir \"${RUNNER_TEMP}/uv-cache\""
-          uv lock --cache-dir="${RUNNER_TEMP}/uv-cache"
+          # Simplest approach: just run uv lock without --cache-dir if it causes issues
+          # This should work with uv's default caching behavior
+          echo "Running uv lock without explicit cache-dir to avoid parameter error"
+          uv lock
 
           if git diff --quiet uv.lock; then
             echo "uv.lock already aligned; no push needed"
