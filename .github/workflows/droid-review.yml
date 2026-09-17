@@ -77,6 +77,22 @@ jobs:
             fi
           fi
 
+          # Dispatch branch whitelist guard (fail-closed, step level).
+          # workflow_dispatch from non-whitelisted branches must fail with exit 1,
+          # not just produce 'skipped' via if:-guard.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ github.ref }}"
+            case "$BRANCH" in
+              refs/heads/main|refs/heads/hotfix/*|refs/heads/feature/*)
+                echo "Dispatch branch $BRANCH is whitelisted"
+                ;;
+              *)
+                echo "::error::workflow_dispatch rejected by droid-review dispatch guard (ref=${BRANCH})"
+                exit 1
+                ;;
+            esac
+          fi
+
           if [ "${{ github.event_name }}" = "pull_request_target" ]; then
             # pull_request_target trigger: use event context
             {
