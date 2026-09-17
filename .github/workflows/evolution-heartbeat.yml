@@ -76,7 +76,7 @@ permissions:
 
 jobs:
   heartbeat:
-    runs-on: ${{ fromJSON(inputs.runner) }}
+    runs-on: ${{ fromJSON(inputs.runner || '"ubuntu-latest"') }}
     permissions:
       contents: read
       issues: write
