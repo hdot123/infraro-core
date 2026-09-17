@@ -106,7 +106,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$(dirname "$COVERAGE_FILE")"
-          pytest -q -n 0 \
+          pytest -q -n 0 -rA \
             --cov=src/infra_core \
             --cov-report=xml \
             --cov-report=term-missing \
@@ -151,7 +151,7 @@ jobs:
         uses: ./.github/actions/setup-venv
 
       - name: "Run security marker tests (-m security, -n 4)"
-        run: pytest -q -m security -n 4 --no-cov
+        run: pytest -q -m security -n 4 --no-cov -rA
 
   # ─── Schema & Migration Tests ───────────────────────────────────────────
   # infra-core's schema-migration equivalent: schema marker tests (262 tests).
@@ -183,7 +183,7 @@ jobs:
         uses: ./.github/actions/setup-venv
 
       - name: "Run schema marker tests (-m schema, -n 4)"
-        run: pytest -q -m schema -n 4 --no-cov
+        run: pytest -q -m schema -n 4 --no-cov -rA
 
   # ─── Boundary & Security Guard Tests ────────────────────────────────────
   # infra-core's boundary-security equivalent: security guard script execution.
@@ -218,7 +218,7 @@ jobs:
         run: python scripts/check_boundary.py
 
       - name: "Run boundary-related marker tests (-m security -k boundary)"
-        run: pytest -q -m security -k "boundary or guard" -n 4 --no-cov
+        run: pytest -q -m security -k "boundary or guard" -n 4 --no-cov -rA
 
   # ─── Full Regression (nightly only) ─────────────────────────────────────
   # Full pytest suite (1200+ tests) for nightly comprehensive regression.
@@ -264,7 +264,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$(dirname "$COVERAGE_FILE")"
-          pytest -q -n 8 --dist loadgroup \
+          pytest -q -n 8 --dist loadgroup -rA \
             --cov=src/infra_core \
             --cov-report=term-missing \
             --cov-report=xml \
