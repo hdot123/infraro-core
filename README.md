@@ -33,8 +33,8 @@ uv python install 3.12
 # 从源码安装（开发模式）
 pip install -e .
 
-# 从 GitHub 安装（公开仓库，免认证）
-pip install git+https://github.com/hdot123/infraro-core.git@<tag>
+# 从 GitHub 安装（公开仓库，免认证；v0.18.7 为当前已发布 tag）
+pip install git+https://github.com/hdot123/infraro-core.git@v0.18.7
 
 # 安装开发依赖
 pip install -e ".[dev]"
@@ -176,8 +176,35 @@ python -m infra_core.governance --author hdot123 --files .evolution/config.yml
 
 MIT
 
+## CI / 分支保护 / droid-review 模型配置（2026-09 现状）
+
+### CI 结构
+
+CI 门由可复用 workflow 组成，聚合为两个 check：
+
+- `ci-ok`：pytest（`-rA` 逐测试结果行）、集成 / e2e / guards / health-check 聚合门
+- `qa-ok`：QA 门聚合（正确处理 schedule-only job 的 skipped 状态）
+
+release-please 发版链路经 `setup-venv` composite action 使用 uv relock，保证发版 PR 与 tag 的锁文件一致性。
+
+### 分支保护硬化
+
+main 分支 ruleset：required checks = `[ci-ok, qa-ok, droid-review]`，strict（要求分支最新）、linear history、squash-only、admin 无豁免。fork PR 由 droid-review fail-closed 身份检查拦截（见下文 Fork PR 政策）。
+
+### droid-review 自定义模型（lumivane CF AiGateway 双头 BYOM）
+
+droid-review AI 评审通过 `~/.factory/settings.json` 的 `customModels` 注入自建网关：
+
+- **baseUrl**：`https://ai.lumivane.dpdns.org/custom-node01/v1`（Cloudflare AiGateway 公网端点）
+- **双头认证**：
+  - `apiKey` ← org secret `NVIDIA_KONG_PROXY_KEY`
+  - 额外 header `cf-aig-authorization: Bearer <LUMIVANE_CFAT>` ← org secret `LUMIVANE_CFAT`
+- 密钥值只存在于 GitHub org secrets，workflow 内经 `${{ secrets.* }}` 注入，仓库与文档零密钥值。
+
+手动分片重试入口 `droid-review-shards.yml`（workflow_dispatch）接受同两个 secret 输入。
+
 ## Fork PR 政策（droid-review）
 
 自 v0.15.2 起（PR #250），droid-review 链对 `pull_request_target` 事件做 fail-closed 身份检查：PR head 来自 fork（`head.repo` != 本仓）或 `head.repo` 缺失时，AI 审查直接失败退出，防止 fork 经 AGENTS.md 注入指令操纵审查。同仓分支 PR 不受影响；维护者可通过 `workflow_dispatch` 手动触发审查.
 
-<!-- Variables updated: 2026-09-13 -->
+<!-- Variables updated: 2026-09-17 -->
