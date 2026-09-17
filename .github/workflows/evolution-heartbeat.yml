@@ -52,7 +52,7 @@ on:
       runner:
         required: false
         type: string
-        default: 'ubuntu-latest'
+        default: '"ubuntu-latest"'
         description: 'Runner label (ubuntu-latest for hosted / self-hosted for consumer)'
     # Snake-only 声明（SNAKE-CONVERGENCE）：统一采用 snake_case 键名，
     # 消除 hyphen 变体过渡形态，保持接口简洁。
@@ -76,7 +76,7 @@ permissions:
 
 jobs:
   heartbeat:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ fromJSON(inputs.runner) }}
     permissions:
       contents: read
       issues: write
