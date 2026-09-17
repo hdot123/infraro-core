@@ -46,6 +46,14 @@ on:
         type: string
         default: ''
         description: 'infra-core ref (tag/branch/SHA); default = this workflow file commit (job.workflow_sha)'
+      # Runner specification for this job (INFRA-692).
+      # 兼容性：引擎自用默认 ubuntu-latest（hosted 无自建 runner 限制）；
+      # 消费仓双栈传 self-hosted 重负载槽。
+      runner:
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+        description: 'Runner label (ubuntu-latest for hosted / self-hosted for consumer)'
     # Snake-only 声明（SNAKE-CONVERGENCE）：统一采用 snake_case 键名，
     # 消除 hyphen 变体过渡形态，保持接口简洁。
     secrets:
@@ -71,7 +79,7 @@ permissions:
 
 jobs:
   scan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: read
       issues: write
