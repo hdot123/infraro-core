@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.6](https://github.com/hdot123/infraro-core/compare/v0.18.6...v0.18.6) (2026-09-17)
+
+
+### Bug Fixes
+
+* **workflow:** fromJSON label passthrough for runner input ([#57](https://github.com/hdot123/infraro-core/issues/57)) ([f737c99](https://github.com/hdot123/infraro-core/commit/f737c99699bee85fc5a76a7f3626bc65cfc6bbe0))
+
 ## [0.18.6](https://github.com/hdot123/infraro-core/compare/v0.18.5...v0.18.6) (2026-09-17)
 
 
