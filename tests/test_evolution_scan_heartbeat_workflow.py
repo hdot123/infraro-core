@@ -77,7 +77,9 @@ def test_scan_reusable_job_permissions_and_runner():
     job = _load(_SCAN)["jobs"]["scan"]
     # r41: runner 来自 workflow_call 输入（默认 ubuntu-latest，消费仓可传 self-hosted）
     assert job["runs-on"] == "${{ inputs.runner }}"
-    assert _triggers(_load(_SCAN))["workflow_call"]["inputs"]["runner"]["default"] == "ubuntu-latest"
+    assert (
+        _triggers(_load(_SCAN))["workflow_call"]["inputs"]["runner"]["default"] == "ubuntu-latest"
+    )
     assert job["permissions"] == {"contents": "read", "issues": "write"}
 
 
