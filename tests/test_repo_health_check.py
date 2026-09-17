@@ -137,26 +137,41 @@ def test_release_please_workflow_relocks_uvlock_on_release_pr() -> None:
 
 @pytest.mark.business_policy
 def test_release_please_relock_degrades_gracefully_without_uv() -> None:
-    """Relock step must not break releases when uv is unavailable.
+    """Relock step must have uv provisioning (setup-venv ensures availability).
 
-    发版不因 relock 失败中断（设计裁定）：uv 缺失时 warning + exit 0，
-    漂移由 repo_health_check.sh Check 1b 在 CI 门禁兜底。锁定降级
-    语义，防止后续编辑改成硬失败卡死发版链路。
+    GitHub-hosted runners don't have uv pre-installed. With checkout +
+    setup-venv step, uv is reliably available per runner-tools.toml
+    (0.12.7). The old "command -v uv" probe + graceful skip is replaced
+    by setup-venv binding uv availability to CI job survival.
+
+    When setup-venv fails (runner-tools.toml change or uv download fail),
+    the entire CI job fails - no soft degradation path exists anymore.
+    This is intentional: uv lock on Release PR must either succeed or
+    warn loudly via CI failure, not silently skip.
     """
     import yaml
 
     wf_path = REPO_ROOT / ".github" / "workflows" / "release-please.yml"
     wf = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
     steps = wf["jobs"]["release-please"]["steps"]
+
+    # Verify checkout and setup-venv are present (uv provisioning)
+    has_checkout = any("actions/checkout" in str(s.get("uses", "")) for s in steps)
+    has_setup_venv = any("setup-venv" in str(s.get("uses", "")) for s in steps)
+    assert has_checkout, "checkout step must exist for uv provisioning"
+    assert has_setup_venv, "setup-venv step must exist for uv provisioning"
+
+    # The old "command -v uv" + graceful skip pattern is removed
+    # since setup-venv now guarantees uv availability
     relock_steps = [s for s in steps if "relock" in s.get("name", "").lower()]
     assert relock_steps, "relock step must exist"
     run = relock_steps[0].get("run", "")
-    assert "command -v uv" in run, "must probe uv availability first"
-    assert "::warning::" in run, "uv missing must emit a warning annotation"
-    # 降级语义：探测失败分支 exit 0（软跳过），不能 exit 1 硬失败
-    probe_block = run.split("command -v uv", 1)[1]
-    early_exit = probe_block.split("fi", 1)[0]
-    assert "exit 0" in early_exit, "uv-missing branch must exit 0 (degrade, not fail)"
+    # Old graceful degradation pattern should not exist
+    assert "command -v uv" not in run, (
+        "relock step must use setup-venv for uv, not probe hospitable uv"
+    )
+    # Verify relock still runs uv lock
+    assert "uv lock" in run, "relock step must run 'uv lock'"
 
 
 # ─── helpers ───
