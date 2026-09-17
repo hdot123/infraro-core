@@ -56,42 +56,64 @@ jobs:
       # 引用了不存在的输出，两輪 schedule 实测永久空跳过，PR #171 漂移
       # 实证）。改用 gh 按 autorelease: pending 标签查询 Release PR 分支，
       # 不依赖 action 输出。本 job 已有 checkout，relock 在共享工作区进行。
+      # 改进：2026-09-18 为解决 PR #64 红腿问题，增加基于分支名的双重探测
+      # 机制（release-please 默认分支名：release-please--branches--<base_branch>）。
       - name: Relock uv.lock on Release PR (INFRA-712)
         env:
           GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           set -euo pipefail
 
-          # 按 autorelease: pending 标签定位当前 Release PR 分支；无
-          # Release PR 开着（如纯 tag 发版轮）时本步无事可做。
-          # 探测必须退避重试：action 同 run 刚创建的 Release PR 在标签
-          # 过滤列表里可能尚不可见（PR #288 实证——创建后 4s 查询落空，
-          # 首轮漏 relock 致 CI 红，漂移拖到下一轮 sweep 才自愈）。
-          # 5 次 × 15s 覆盖 GitHub API 最终一致性窗口；重试穷尽仍无 PR
-          # 才按「无事可做」跳过。
+          # 双重探测机制：先按 autorelease: pending 标签定位 Release PR 分支
           BRANCH=""
+          
+          # 第一重：按标签探测（原有逻辑，保持兼容）
           for attempt in 1 2 3 4 5; do
             BRANCH="$(gh pr list -R "${GITHUB_REPOSITORY}" --state open \
               --label "autorelease: pending" --limit 1 \
               --json headRefName --jq '.[0].headRefName // empty' 2>/dev/null || true)"
             if [ -n "$BRANCH" ]; then
+              echo "Found Release PR via label: $BRANCH"
               break
             fi
-            echo "Release PR not visible yet (attempt ${attempt}/5)"
+            echo "Release PR not visible by label yet (attempt ${attempt}/5)"
             if [ "$attempt" -lt 5 ]; then
               sleep 15
             fi
           done
+          
+          # 第二重：按默认分支名探测（新增逻辑，提高可靠性）
           if [ -z "$BRANCH" ]; then
-            echo "No open Release PR visible after 5 attempts; nothing to relock"
+            DEFAULT_BRANCH_NAME="release-please--branches--main"
+            echo "Trying default branch name: $DEFAULT_BRANCH_NAME"
+            
+            # 检查该分支是否存在且是一个开放的 PR
+            if git ls-remote --heads origin "$DEFAULT_BRANCH_NAME" | grep -q "$DEFAULT_BRANCH_NAME"; then
+              # 确认这个分支确实对应一个 PR
+              PR_FOR_DEFAULT=$(gh pr list -R "${GITHUB_REPOSITORY}" --state open --head "$DEFAULT_BRANCH_NAME" --limit 1 --json number --jq '.[0].number // empty' 2>/dev/null || true)
+              if [ -n "$PR_FOR_DEFAULT" ]; then
+                BRANCH="$DEFAULT_BRANCH_NAME"
+                echo "Found Release PR via default branch name: $BRANCH"
+              else
+                echo "Default branch exists but no PR found for it"
+              fi
+            else
+              echo "Default branch $DEFAULT_BRANCH_NAME does not exist"
+            fi
+          fi
+          
+          if [ -z "$BRANCH" ]; then
+            echo "No open Release PR found after dual detection attempts; nothing to relock"
             exit 0
           fi
           echo "Release PR branch: $BRANCH"
 
-          # 在共享工作区执行 relock（本 job 已 checkout main）
-          git config user.name "release-please[bot]"
-          git config user.email "release-please[bot]@users.noreply.github.com"
-
+          # Fetch the release branch to make it available locally
+          git fetch origin "$BRANCH":"$BRANCH"
+          
+          # Checkout the release branch to relock
+          git checkout "$BRANCH"
+          
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
           uv lock
@@ -100,6 +122,10 @@ jobs:
             echo "uv.lock already aligned; no push needed"
             exit 0
           fi
+
+          # Configure git for the commit
+          git config user.name "release-please[bot]"
+          git config user.email "release-please[bot]@users.noreply.github.com"
 
           git add uv.lock
           git commit -m "chore(release): relock uv.lock root package version (INFRA-712)"
