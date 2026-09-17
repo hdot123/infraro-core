@@ -76,9 +76,9 @@ def test_scan_reusable_secrets_contract():
 def test_scan_reusable_job_permissions_and_runner():
     job = _load(_SCAN)["jobs"]["scan"]
     # r41: runner 来自 workflow_call 输入（默认 ubuntu-latest，消费仓可传 self-hosted）
-    assert job["runs-on"] == "${{ inputs.runner }}"
+    assert job["runs-on"] == "${{ fromJSON(inputs.runner) }}"
     assert (
-        _triggers(_load(_SCAN))["workflow_call"]["inputs"]["runner"]["default"] == "ubuntu-latest"
+        _triggers(_load(_SCAN))["workflow_call"]["inputs"]["runner"]["default"] == '"ubuntu-latest"'
     )
     assert job["permissions"] == {"contents": "read", "issues": "write"}
 
@@ -370,8 +370,8 @@ def test_heartbeat_reusable_secrets_and_engine():
     assert "dispatch-token" not in secrets, "hyphen 过渡变体必须保持删除（snake 单形态立法）"
     job = data["jobs"]["heartbeat"]
     # r41: runner 来自 workflow_call 输入（默认 ubuntu-latest，消费仓可传 self-hosted）
-    assert job["runs-on"] == "${{ inputs.runner }}"
-    assert _triggers(data)["workflow_call"]["inputs"]["runner"]["default"] == "ubuntu-latest"
+    assert job["runs-on"] == "${{ fromJSON(inputs.runner) }}"
+    assert _triggers(data)["workflow_call"]["inputs"]["runner"]["default"] == '"ubuntu-latest"'
     run_step = {s.get("name", ""): s for s in job["steps"]}["Run heartbeat check"]
     assert run_step["run"] == "python -m infra_core.engine.evolution_heartbeat"
     assert run_step["env"]["GH_TOKEN"] == "${{ secrets.dispatch_token }}"
