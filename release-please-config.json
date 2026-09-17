@@ -44,8 +44,7 @@
           "section": "Tests",
           "hidden": false
         }
-      ],
-      "release-as": "0.18.6"
+      ]
     }
   }
 }
