@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.8](https://github.com/hdot123/infraro-core/compare/v0.18.7...v0.18.8) (2026-09-17)
+
+
+### Bug Fixes
+
+* Provide explicit cache-dir for uv lock command (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#65](https://github.com/hdot123/infraro-core/issues/65)) ([b316d05](https://github.com/hdot123/infraro-core/commit/b316d0589017a5f5172d91ef4a92883895e697a4))
+* **workflow:** schedule-safe runner default for scan/heartbeat runs-on ([#63](https://github.com/hdot123/infraro-core/issues/63)) ([758fe58](https://github.com/hdot123/infraro-core/commit/758fe5831984633e9f62bd22697ed8868cb6949d))
+
+
+### Documentation
+
+* refresh engine entry doc to 2026-09 state ([#62](https://github.com/hdot123/infraro-core/issues/62)) ([8790bc7](https://github.com/hdot123/infraro-core/commit/8790bc770ab00afbdf6e18b218a85a641147df36))
+
 ## [0.18.7](https://github.com/hdot123/infraro-core/compare/v0.18.6...v0.18.7) (2026-09-17)
 
 
