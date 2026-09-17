@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.19.0](https://github.com/hdot123/infraro-core/compare/v0.18.5...v0.19.0) (2026-09-17)
+
+
+### Features
+
+* **heartbeat:** scanner_workflow input for consumer scanner filename override (r38) ([#53](https://github.com/hdot123/infraro-core/issues/53)) ([30b6e50](https://github.com/hdot123/infraro-core/commit/30b6e5032022e799f7208e94e0ac9db179783942))
+* **workflow:** add runner input and dispatch guard for consumer-slot-finalization ([#54](https://github.com/hdot123/infraro-core/issues/54)) ([df0ee1b](https://github.com/hdot123/infraro-core/commit/df0ee1b0bcad10fb68d6324e44e02bc631ff3d8c))
+
+
+### Bug Fixes
+
+* Engine main redfix relock fixture drift ([#49](https://github.com/hdot123/infraro-core/issues/49)) ([48190b4](https://github.com/hdot123/infraro-core/commit/48190b49a15d6e203cb5f2172bb894e49f6c6a8f))
+* **governance:** align F8 ruleset contract with r34b adjudicated terminal state ([#52](https://github.com/hdot123/infraro-core/issues/52)) ([d1bd3e3](https://github.com/hdot123/infraro-core/commit/d1bd3e38b6aaa568a07b9fe647b8f695a91c3fdb))
+
 ## [0.18.5](https://github.com/hdot123/infraro-core/compare/v0.18.4...v0.18.5) (2026-09-16)
 
 
