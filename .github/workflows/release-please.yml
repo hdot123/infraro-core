@@ -112,9 +112,6 @@ jobs:
           # Fetch the release branch to make it available locally
           git fetch origin "$BRANCH":"$BRANCH"
           
-          # Checkout the release branch to relock
-          git checkout "$BRANCH"
-          
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
           # Use --no-cache to avoid cache-dir requirement
