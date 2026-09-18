@@ -29,6 +29,14 @@ on:
 permissions:
   contents: read
 
+# 2026-09-19 governance（VAL-CORE-003）：双事件并发治理。PR 型取消旧 run
+# （省 pve 双机排队，语义对齐 ci.yml 容量收敛：连环 push 的中间 SHA 结果
+# 无消费面）；schedule/dispatch（nightly）串行不取消（cancel-in-progress
+# false 兜底定时全量回归，防中途打断留下半跑状态）。
+concurrency:
+  group: qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # ─── CLI End-to-End Smoke Tests ──────────────────────────────────────────
   # Wires scripts/cli_smoke_test.sh (existed since step1 assets, now connected).

@@ -6,6 +6,13 @@ on:
 
 permissions: {}
 
+# 2026-09-19 governance（VAL-CORE-003）：release 事件型串行（cancel-in-progress
+# false）。公告幂等送达（同 tag 重发布重发可容忍），超短 job（timeout 5min）
+# 排队零成本；绝不取消进行中的公告腿（fire-and-forget 语义，取消=丢公告）。
+concurrency:
+  group: release-announce-${{ github.event.release.tag_name || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   announce:
     name: Announce release to broadcast endpoint

@@ -14,6 +14,13 @@ permissions:
   contents: read
   pull-requests: read
 
+# 2026-09-19 governance（VAL-CORE-003）：PR 型取消旧 run。同 PR 连环 push
+# 时旧的 governance 评估对象是过期 head SHA，结论无意义，直接取消；
+# pull_request_target 本身无 schedule 面，恒为 PR 事件驱动。
+concurrency:
+  group: evolution-governance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   governance:
     name: Block non-owner governance modifications

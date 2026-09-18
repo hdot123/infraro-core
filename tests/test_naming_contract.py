@@ -659,11 +659,16 @@ class TestAutoMergeTriggerContract:
             assert name in triggers, f"auto-merge must have {name} trigger"
 
     def test_auto_merge_workflow_run_names_byte_exact(self):
-        """workflow_run 监听名与 memory-core 字节级同构（任一改名静默杀死快速路径）"""
+        """workflow_run 监听名与 memory-core 字节级同构（任一改名静默杀死快速路径）
+
+        2026-09-19 补 'Quality Gate'（governance mission）：quality-gate 是全绿
+        链最后完成的 check（聚合 ci-ok/qa-ok/substrate），缺它时绿 PR 等
+        */30 schedule 兜底——实测 40 分钟合并延迟。
+        """
         data = self._load_workflow()
         wr = data[True]["workflow_run"]
         assert sorted(wr["workflows"]) == sorted(
-            ["CI", "QA", "Droid Auto Review", "Evolution Governance"]
+            ["CI", "QA", "Droid Auto Review", "Evolution Governance", "Quality Gate"]
         ), f"workflow_run names drifted: {wr['workflows']}"
         assert wr["types"] == ["completed"]
 

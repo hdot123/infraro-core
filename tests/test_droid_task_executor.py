@@ -494,17 +494,27 @@ class TestDryRunPrerequisites:
         assert "--tag" in run, "droid exec must pass --tag metadata"
 
     def test_workflow_permissions_include_contents_write(self):
-        """workflow 顶层权限含 contents: write"""
+        """2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。
+
+        顶层只留 contents:read 基线（INFRA-688 兜底）；contents:write 在
+        execute job 级（checkout target repo / 推送修复分支兜底语义）。
+        """
         data = _load(WORKFLOW)
-        perms = data.get("permissions", {})
-        assert perms.get("contents") == "write", f"workflow must have contents: write, got {perms}"
+        top_perms = data.get("permissions", {})
+        assert top_perms.get("contents") == "read", (
+            f"workflow top-level must be read baseline, got {top_perms}"
+        )
+        job_perms = data["jobs"]["execute"].get("permissions", {})
+        assert job_perms.get("contents") == "write", (
+            f"execute job must have contents: write, got {job_perms}"
+        )
 
     def test_workflow_permissions_include_issues_write(self):
-        """workflow 顶层权限含 issues: write（失败兜底建 Issue 需要）"""
+        """issues: write 在 execute job 级（失败兜底建 Issue 需要）"""
         data = _load(WORKFLOW)
-        perms = data.get("permissions", {})
-        assert perms.get("issues") == "write", (
-            f"workflow must have issues: write (for failure fallback Issue), got {perms}"
+        job_perms = data["jobs"]["execute"].get("permissions", {})
+        assert job_perms.get("issues") == "write", (
+            f"execute job must have issues: write (for failure fallback Issue), got {job_perms}"
         )
 
     def test_validate_payload_step_exists(self):

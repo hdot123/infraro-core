@@ -29,6 +29,15 @@ permissions:
 jobs:
   create-labels:
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-003）：job 级并发治理。顶层 concurrency
+    # 被 INFRA-626 禁令钉死（workflow_call reusable 顶层组与 caller 顶层组撞名
+    # = GitHub run 级自死锁，2026-08-29 memory #1071 实测）。label 创建幂等
+    # （422 already-exists → skipped 计数），串行不取消；组名自命名空间前缀
+    # 确保与 caller 顶层组永不同组，组内串行避免并发 createLabel 对同名 label
+    # 的 422/422 双报错竞态。
+    concurrency:
+      group: setup-labels-reusable-${{ github.repository_id }}
+      cancel-in-progress: false
     outputs:
       created_count: ${{ steps.create.outputs.created_count }}
       skipped_count: ${{ steps.create.outputs.skipped_count }}
