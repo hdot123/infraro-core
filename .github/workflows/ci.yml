@@ -582,7 +582,10 @@ jobs:
   # 由 declaration-template-interface-fix / engine-substrate-boundary / legacy-repo-disposition
   # / bookkeeping 清理。转正后 gate-tests 成为 ci-ok needs 的阻断项。
   gate-tests:
-    name: substrate-gate-tests
+    # Display name IS the check context required by the ruleset (drift fix
+    # for #85): "substrate-gate-suite". A required context that matches no
+    # live check name blocks merges forever — this rename makes it real.
+    name: substrate-gate-suite
     runs-on: ubuntu-latest
     steps:
       - name: Workspace guard (sparse residue detox)

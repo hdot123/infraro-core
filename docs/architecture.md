@@ -25,8 +25,10 @@ infra-core（public 引擎仓库）
 | workflow 名 | `CI` | auto-merge workflow_run |
 | workflow 名 | `Evolution Governance` | auto-merge workflow_run |
 | workflow 名 | `Droid Auto Review` / `QA` | auto-merge、watchdog、ci-ok 零红扫描 |
-| check 名（job key） | `qa-ok` | QA workflow 聚合门禁（ci-ok 零红扫描 + auto-merge rollup 消费，见 §5.1） |
-| check 名（job key） | `ci-ok` | branch protection required check |
+| check 名（job key） | `qa-ok` | QA workflow 聚合门禁（quality-gate 聚合面 + ci-ok 零红扫描 + auto-merge rollup 消费，见 §5.1） |
+| check 名（job key） | `ci-ok` | CI workflow 聚合门禁（quality-gate 聚合面；零红扫描双保险） |
+| check 名（job 显示名） | `substrate-gate-suite` | substrate 五道门聚合 check（ruleset required，#85 漂移修复后与 job 显示名对齐） |
+| check 名（job 显示名） | `quality-gate` | ruleset required check：ci/qa/substrate 门聚合层（`Quality Gate` workflow，2026-09-19 治理重构） |
 | check 显示名（job name） | `Block non-owner governance modifications` | branch protection required check |
 | artifact 前缀（未来） | `droid-review-debug-` | watchdog quota-sweep |
 | workflow 文件名（未来） | `evolution-scan.yml` | heartbeat `gh run list --workflow` |
@@ -61,8 +63,10 @@ infra-core 用自己的 governance 门禁保护自身（self-bootstrap）：
 | advisory-bundle | `CI` | advisory 三合一（pip-audit / deptry / 遥测覆盖率审计 `scripts/audit_telemetry_coverage.sh`），INFRA-595 零红：无 `continue-on-error`，失败即红 check-run，ci-ok 按 `.result` 阻断（曾有 `continue-on-error` 时 `.result` 恒为 success，判定空转，run 33129232081 实证） |
 | integration-tests / e2e-tests | `CI` | 独立专项组（`-m <marker> -n 4 --no-cov`）；e2e 附 CLI 冒烟 |
 | health-check | `CI` | CI 健康自检（`scripts/ci_health_check.sh`） |
-| ci-ok | `CI` | 聚合（branch protection required check），逐项显式阻断全部 9 个前置 job（含 advisory-bundle，按 `.result`；INFRA-595），另有 GitHub API 全 check-runs 零红扫描双保险 |
-| qa-ok | `QA` | QA 聚合门禁：PR 子集（cli-e2e / security / schema / boundary）+ 夜间全量（coverage-audit / full-regression），job 家族映射见 §5.1；非 required check，由 ci-ok 零红扫描（`scripts/check_zero_red.sh`，全 check-runs success/skipped/neutral）与 auto-merge rollup 全绿判定纳入合并门禁 |
+| ci-ok | `CI` | 聚合（quality-gate 聚合面 + 零红扫描双保险），逐项显式阻断全部 9 个前置 job（含 advisory-bundle，按 `.result`；INFRA-595），另有 GitHub API 全 check-runs 零红扫描双保险 |
+| qa-ok | `QA` | QA 聚合门禁：PR 子集（cli-e2e / security / schema / boundary）+ 夜间全量（coverage-audit / full-regression），job 家族映射见 §5.1；由 quality-gate 聚合（PR 事件面）、ci-ok 零红扫描（`scripts/check_zero_red.sh`，全 check-runs success/skipped/neutral）与 auto-merge rollup 全绿判定纳入合并门禁 |
+| substrate-gate-suite | `CI` | substrate 五道门（gate-tests job 显示名即 required context，#85 漂移修复）；ci-ok needs 阻断项 + quality-gate 聚合面 |
+| quality-gate | `Quality Gate` | ruleset required 聚合 check：轮询聚合 ci-ok / substrate-gate-suite /（PR 面）qa-ok 三门结论为显式 `quality-gate` check（2026-09-19 治理 mission M1，修复 #85 漂移：ruleset required checks = quality-gate + droid-review + substrate-gate-suite） |
 | governance | `Evolution Governance` | 受保护路径 owner 门禁（pull_request_target，执行 shipped governance-check action） |
 | evolution 自扫 | `Evolution Scan Reusable` / `Evolution Heartbeat Reusable` | 非门禁：引擎仓自扫管道。reusable 被消费仓 `uses:` 引用，同时自带本仓 `schedule`（scan `17,47 * * * *`、heartbeat `53 */2 * * *`，INFRA-717）——本仓作为自扫消费仓无法建 thin caller（文件名被消费仓路径引用 + heartbeat 按文件名探活双契约钉死），schedule 仅宿主仓生效不影响消费仓 |
 | release | `Release Please` | 非门禁：发版管道（schedule/push(paths)/dispatch，DISPATCH_TOKEN，详见第 6 节） |

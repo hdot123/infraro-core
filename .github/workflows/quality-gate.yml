@@ -1,0 +1,156 @@
+# Quality Gate — explicit aggregate check (governance mission M1, VAL-CORE-002)
+#
+# Purpose: expose ci/qa/substrate gate outcomes as ONE explicit `quality-gate`
+# check so the branch ruleset can require a single aggregate context instead
+# of tracking each inner check name (drift class of #85: a required context
+# that does not match any live check name blocks merges forever).
+#
+# Aggregation surface (cross-workflow GitHub API polling, pattern of
+# scripts/check_droid_review.sh):
+#   - ci-ok                (CI workflow aggregate; itself zero-red enforced
+#                           and already waits for droid-review internally)
+#   - substrate-gate-suite (five substrate gates inside CI; job display name
+#                           IS the required context, renamed to match)
+#   - qa-ok                (QA workflow aggregate; PR events only — QA does
+#                           not run on push, absent-on-push is dropped from
+#                           the expected set, not treated as skip)
+#   - droid-review is intentionally NOT in this surface: it is a separately
+#     required context in the ruleset and ci-ok already polls it; polling it
+#     here too would duplicate a 10-35 min wait.
+#
+# Timing budget: ci-ok can itself poll droid-review for up to 120*30s (~60
+# min) on PRs, so this gate polls up to 130*30s (~65 min) and the job
+# timeout is 80 min to cover slow review tails.
+#
+# Zero-red interplay: ci-ok's zero-red scan (scripts/check_zero_red.sh)
+# selects completed check-runs only; quality-gate reports its conclusion
+# only after ci-ok completes, so it never trips that scan in the green path.
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quality-gate:
+    name: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    permissions:
+      contents: read  # checkout for ensure-jq composite action
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup jq
+        uses: ./.github/actions/ensure-jq
+
+      - name: Aggregate ci/qa/substrate gate conclusions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          # Expected check surfaces. qa-ok only exists on pull_request events
+          # (the QA workflow has no push trigger); on push it is dropped from
+          # the expected set rather than treated as a skip.
+          EXPECTED_CHECKS="ci-ok substrate-gate-suite"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            EXPECTED_CHECKS="$EXPECTED_CHECKS qa-ok"
+          fi
+
+          # ci-ok itself polls droid-review for up to 120*30s (~60 min) on
+          # PRs; poll here with a slightly larger budget (130*30s ≈ 65 min).
+          MAX_ATTEMPTS=130
+          WAIT_SECONDS=30
+
+          echo "Quality-gate aggregation for commit $COMMIT_SHA (event: $EVENT_NAME)"
+          echo "Expected checks: $EXPECTED_CHECKS"
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            # Fetch check runs for the head commit. curl-level failures are
+            # transient (pattern from scripts/check_droid_review.sh P1).
+            CHECKS=$(curl -s \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPOSITORY}/commits/${COMMIT_SHA}/check-runs?per_page=100") || {
+                echo "⚠ transient network error querying check runs, retrying in ${WAIT_SECONDS}s..."
+                sleep "$WAIT_SECONDS"
+                continue
+              }
+
+            # Resilient parse: rate-limit/5xx bodies have no .check_runs;
+            # treat as transient and retry instead of dying under set -e.
+            # Per name: status=pending while any run is non-completed;
+            # conclusion = latest non-cancelled conclusion (rerun-safe).
+            SUMMARY=$(echo "$CHECKS" | jq -r '
+              [.check_runs // []]
+              | flatten
+              | map(select(.name == "ci-ok" or .name == "substrate-gate-suite" or .name == "qa-ok"))
+              | group_by(.name)
+              | map({name: .[0].name,
+                     status: (map(select(.status != "completed")) | length > 0 | if . then "pending" else "completed" end),
+                     conclusion: (map(select(.conclusion != null and .conclusion != "cancelled"))
+                                  | sort_by(.started_at) | last | .conclusion // "pending")})
+              | map("\(.name)\t\(.status)\t\(.conclusion)")
+              | .[]' ) || {
+                echo "⚠ transient API error parsing check runs, retrying in ${WAIT_SECONDS}s..."
+                sleep "$WAIT_SECONDS"
+                continue
+              }
+
+            echo "--- attempt $attempt/$MAX_ATTEMPTS ---"
+            echo "$SUMMARY"
+
+            FAILED=0
+            READY=1
+            for expected in $EXPECTED_CHECKS; do
+              # awk field parse avoids literal-tab grep fragility.
+              ROW=$(echo "$SUMMARY" | awk -F'\t' -v n="$expected" '$1 == n {print $2 "/" $3; exit}')
+              if [ -z "$ROW" ]; then
+                echo "⏳ $expected has not reported yet."
+                READY=0
+              elif [ "$ROW" != "completed/success" ]; then
+                echo "❌ $expected: $ROW"
+                if [ "$ROW" = "completed/failure" ] || [ "$ROW" = "completed/timed_out" ] \
+                  || [ "$ROW" = "completed/action_required" ] || [ "$ROW" = "completed/neutral" ] \
+                  || [ "$ROW" = "completed/stale" ]; then
+                  FAILED=1
+                else
+                  # still pending/in-progress — keep waiting
+                  READY=0
+                fi
+              else
+                echo "✅ $expected: success"
+              fi
+            done
+
+            if [ "$FAILED" -eq 1 ]; then
+              echo "❌ Quality gate FAILED: one or more aggregated checks are red."
+              exit 1
+            fi
+
+            if [ "$READY" -eq 1 ]; then
+              echo "✅ Quality gate PASSED: ci/qa/substrate aggregates all green."
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              sleep "$WAIT_SECONDS"
+            fi
+          done
+
+          echo "❌ Quality gate timed out waiting for aggregated checks after $MAX_ATTEMPTS attempts."
+          exit 1

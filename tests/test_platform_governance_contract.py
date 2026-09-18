@@ -340,8 +340,11 @@ _ENFORCEMENT_ACTIVE = {"active", "enabled"}
 _F8_RULESET_NAME = "main-branch-protection"
 # r34b 用户裁定终态（2026-09-16，mission AGENTS.md）：条件迁移为默认分支语义锚
 _F8_REF_NAME_INCLUDE = ("~DEFAULT_BRANCH",)
-# r34b 终态：required = 纯聚合 + 评审层（ci-ok / qa-ok / droid-review）
-_F8_RSC_CHECKS_ANCHOR = frozenset({"ci-ok", "qa-ok", "droid-review"})
+# r34b 终态 → 2026-09-19 quality-gate 重构（feature core-quality-gate-and-drift，
+# 治理 mission M1）：required = 聚合层（quality-gate）+ 评审层（droid-review）
+# + substrate 门（substrate-gate-suite，#85 漂移修复——该 context 由 ci.yml
+# gate-tests job 的显示名承载，此前从未上线即 ruleset 缺项）。
+_F8_RSC_CHECKS_ANCHOR = frozenset({"quality-gate", "droid-review", "substrate-gate-suite"})
 _F8_ALLOWED_MERGE_METHODS_ANCHOR = ("squash",)
 _F8_RULE_TYPES_ANCHOR = frozenset(
     {
@@ -484,17 +487,17 @@ class TestRulesetsFiveRuleTypes:
     """VAL-M3-014: 三类规则齐全且参数正确。"""
 
     def test_required_status_checks_parameters(self):
-        """required = [ci-ok, qa-ok, droid-review]，strict policy（r34b 终态）。"""
+        """required = [quality-gate, droid-review, substrate-gate-suite]（2026-09-19 重构）。"""
         _skip_if_no_rulesets()
         detail = _get_ruleset_detail(_find_ruleset_id())
         rsc_rules = [r for r in detail["rules"] if r["type"] == "required_status_checks"]
         assert len(rsc_rules) == 1, (
-            f"应有恰好一个 required_status_checks 规则（r34b 终态）, 实际 {len(rsc_rules)} 个"
+            f"应有恰好一个 required_status_checks 规则（2026-09-19 重构）, 实际 {len(rsc_rules)} 个"
         )
         params = rsc_rules[0]["parameters"]
         contexts = {c["context"] for c in params["required_status_checks"]}
         assert contexts == set(_F8_RSC_CHECKS_ANCHOR), (
-            f"required_status_checks 应为 {sorted(_F8_RSC_CHECKS_ANCHOR)}（纯聚合 + 评审层）, "
+            f"required_status_checks 应为 {sorted(_F8_RSC_CHECKS_ANCHOR)}（聚合 + 评审 + substrate 门）, "
             f"实际 {sorted(contexts)}"
         )
         assert params.get("strict_required_status_checks_policy") is True, (
@@ -703,10 +706,10 @@ class TestF8StaticAnchors:
         )
 
     def test_required_status_checks_anchor(self) -> None:
-        """required_status_checks 锚点 = {ci-ok, qa-ok, droid-review}（r34b 终态）。"""
-        assert _F8_RSC_CHECKS_ANCHOR == {"ci-ok", "qa-ok", "droid-review"}, (
+        """required_status_checks 锚点 = {quality-gate, droid-review, substrate-gate-suite}。"""
+        assert _F8_RSC_CHECKS_ANCHOR == {"quality-gate", "droid-review", "substrate-gate-suite"}, (
             f"required_status_checks 锚点被修改: {sorted(_F8_RSC_CHECKS_ANCHOR)} — "
-            "删 check（如 qa-ok）会静默拆掉 merge 门禁"
+            "删 check（如 substrate-gate-suite）会静默拆掉 merge 门禁"
         )
 
     def test_merge_methods_and_rule_types_anchor(self) -> None:
