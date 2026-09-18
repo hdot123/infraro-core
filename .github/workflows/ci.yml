@@ -64,7 +64,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -112,7 +112,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -233,7 +233,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -264,7 +264,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -304,7 +304,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -345,7 +345,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # full history for PR diff analysis
 
@@ -393,7 +393,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -421,7 +421,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -452,7 +452,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -543,7 +543,7 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Zero-red aggregation (scan ALL check-runs via GitHub API)
         env:
@@ -604,7 +604,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
@@ -655,7 +655,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # INFRA-569：webhook payload 组装依赖 jq，自建 runner 不保证预装，兜底安装
       - uses: ./.github/actions/ensure-jq

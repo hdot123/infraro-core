@@ -215,7 +215,7 @@ jobs:
           fi
 
       - name: Checkout engine (infraro-core)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: hdot123/infraro-core
           # SHA 真源模型（与 evolution-scan.yml 引擎安装步同构）：job.workflow_sha
@@ -329,20 +329,20 @@ jobs:
           fi
 
       - name: Checkout repository (BASE)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.setup.outputs.base_sha }}
           fetch-depth: 0
 
       - name: Checkout PR head (HEAD → head-src/)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
           fetch-depth: 0
           path: head-src
 
       - name: Checkout engine (infraro-core)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: hdot123/infraro-core
           # SHA 真源模型（与 evolution-scan.yml 引擎安装步同构）：job.workflow_sha

@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Checkout main for setup-venv and action references
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup venv (per-run isolation)
         uses: ./.github/actions/setup-venv
