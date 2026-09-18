@@ -22,7 +22,7 @@ WEBHOOK_BASE="${WEBHOOK_BASE:-${HOME}/.factory/webhook}"
 LOG_DIR="${WEBHOOK_BASE}/logs"
 LOCK_DIR="${WEBHOOK_BASE}/locks"
 REPO_CONFIG="${REPO_CONFIG:-${HOME}/.factory/config/repositories.yml}"
-GITHUB_REPO="${POSTHOG_GITHUB_REPO:-hdot123/memory}"
+GITHUB_REPO="${POSTHOG_GITHUB_REPO:-hdot123/infraro-core}"
 
 # === 日志 ===
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -86,7 +86,7 @@ for team in cfg.get('teams', {}).values():
             print(f'{path}|{gh}')
             exit(0)
 # Default fallback
-print(os.path.expanduser('~/memory') + '|hdot123/memory')
+print(os.path.expanduser('~/memory') + '|hdot123/infraro-core')
 " 2>/dev/null && return
     fi
 
@@ -97,7 +97,7 @@ print(os.path.expanduser('~/memory') + '|hdot123/memory')
     fi
 
     # Strategy 3: Hardcoded fallback (last resort)
-    echo "${HOME}/memory|hdot123/memory"
+    echo "${HOME}/memory|hdot123/infraro-core"
 }
 
 # === 并发保护 (M1: atomic flock + M2: PID liveness check) ===
