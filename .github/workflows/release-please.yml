@@ -61,7 +61,6 @@ jobs:
       - name: Relock uv.lock on Release PR (INFRA-712)
         env:
           GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
-          UV_CACHE_DIR: ${{ env.UV_CACHE_DIR }}
         run: |
           set -euo pipefail
 
@@ -114,10 +113,9 @@ jobs:
           
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
           # 已对齐时 uv lock 不产生 diff）
-          # Simplest approach: just run uv lock without --cache-dir if it causes issues
-          # This should work with uv's default caching behavior
-          echo "Running uv lock without explicit cache-dir to avoid parameter error"
-          uv lock
+          # Using env -u to remove UV_CACHE_DIR to prevent empty string pollution
+          echo "Running uv lock with UV_CACHE_DIR removed to avoid parameter error"
+          env -u UV_CACHE_DIR uv lock
 
           if git diff --quiet uv.lock; then
             echo "uv.lock already aligned; no push needed"

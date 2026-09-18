@@ -168,7 +168,12 @@ runs:
         echo "$VENV/bin" >> "$GITHUB_PATH"
         echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
         echo "VENV_PATH=$VENV" >> "$GITHUB_ENV"
-        echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
+        
+        # Only set UV_CACHE_DIR if it's not empty (prevent empty string pollution)
+        if [ -n "$UV_CACHE_DIR" ]; then
+          echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
+        fi
+        
         echo "PIP_CACHE_DIR=$PIP_CACHE_DIR" >> "$GITHUB_ENV"
 
         # venv pip 升级（main 原有语义，本 PR 重构时曾遗漏致 rebase 后 advisory 红）：
