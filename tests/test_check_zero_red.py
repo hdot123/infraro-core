@@ -249,10 +249,9 @@ class TestZeroRedPolicy:
         (proven in run 33129232081). Zero-red requires red check-runs.
         2026-08-29 bundle 化：advisory-bundle 为三 advisory 的零红载体。
 
-        substrate-gate-suite 例外（2026-09-13，先红着上线裁定）：gate-tests
-        的五个门步允许步级 continue-on-error——存量红留在步日志、check-run
-        记 success、不阻断合并；job 级 c-o-e 仍然全面禁止（infra 失败保持
-        红可见）。门转绿转正 required checks 时由 misc feature 一并拆除。
+        2026-09-18 解冻判据③：gate-tests 已转正 required check，五个门步不再保留
+        continue-on-error（存量红暴露为 failure，阻断合并）。job 级 continue-on-error
+        始终全面禁止（infra 失败保持红可见）。
         """
         ci_yml = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
         content = ci_yml.read_text()
@@ -275,9 +274,9 @@ class TestZeroRedPolicy:
                     )
                     gate_steps += 1
 
-        # 先红着上线裁定在场：五个门步全部步级 advisory
-        assert gate_steps == 5, (
-            f"gate-tests 应有 5 个步级 continue-on-error 门步（先红着上线），found {gate_steps}"
+        # 先红着上线裁定已转正 required：五个门步全部无步级 continue-on-error（转正 required check）
+        assert gate_steps == 0, (
+            f"gate-tests 转正后应有 0 个步级 continue-on-error（转正 required check）：存量红需暴露为 failure，found {gate_steps}"
         )
 
 
