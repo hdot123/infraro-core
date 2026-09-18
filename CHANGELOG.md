@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.18.8](https://github.com/hdot123/infraro-core/compare/v0.18.7...v0.18.8) (2026-09-18)
+
+
+### Bug Fixes
+
+* Provide explicit cache-dir for uv lock command (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#65](https://github.com/hdot123/infraro-core/issues/65)) ([b316d05](https://github.com/hdot123/infraro-core/commit/b316d0589017a5f5172d91ef4a92883895e697a4))
+* **workflow:** add guard for PIP_CACHE_DIR to prevent empty string pollution ([#76](https://github.com/hdot123/infraro-core/issues/76)) ([fb6e88b](https://github.com/hdot123/infraro-core/commit/fb6e88b6d23825182a161e00eb20463a94ff579f))
+* **workflow:** correct uv lock cache-dir parameter fallback (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#68](https://github.com/hdot123/infraro-core/issues/68)) ([4baaae0](https://github.com/hdot123/infraro-core/commit/4baaae0b9b9ec7ec1600954ed22adaa6a16fb1cd))
+* **workflow:** correct uv lock cache-dir parameter fallback for real (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#69](https://github.com/hdot123/infraro-core/issues/69)) ([2e3e865](https://github.com/hdot123/infraro-core/commit/2e3e8655f026b50e6ba165f300adecfc07dce13e))
+* **workflow:** prevent empty UV_CACHE_DIR pollution in setup-venv action ([#75](https://github.com/hdot123/infraro-core/issues/75)) ([c6abd91](https://github.com/hdot123/infraro-core/commit/c6abd91a84936a97314eda0d7dbab715627f1891))
+* **workflow:** remove --cache-dir parameter to fix uv lock error (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#71](https://github.com/hdot123/infraro-core/issues/71)) ([5cba44f](https://github.com/hdot123/infraro-core/commit/5cba44f53d5d34a382547979ad3902dc09182c85))
+* **workflow:** schedule-safe runner default for scan/heartbeat runs-on ([#63](https://github.com/hdot123/infraro-core/issues/63)) ([758fe58](https://github.com/hdot123/infraro-core/commit/758fe5831984633e9f62bd22697ed8868cb6949d))
+* **workflow:** use --no-cache flag to avoid cache-dir requirement (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#72](https://github.com/hdot123/infraro-core/issues/72)) ([5ea446d](https://github.com/hdot123/infraro-core/commit/5ea446d8e77912677016244eecae66b13b012a8f))
+* **workflow:** use simplest possible cache-dir approach to fix --cache-dir error (PR [#64](https://github.com/hdot123/infraro-core/issues/64)) ([#70](https://github.com/hdot123/infraro-core/issues/70)) ([af6cde3](https://github.com/hdot123/infraro-core/commit/af6cde35b92c34270c105c8ba71aeacf4c62db29))
+
+
+### Documentation
+
+* refresh engine entry doc to 2026-09 state ([#62](https://github.com/hdot123/infraro-core/issues/62)) ([8790bc7](https://github.com/hdot123/infraro-core/commit/8790bc770ab00afbdf6e18b218a85a641147df36))
+
 ## [0.18.7](https://github.com/hdot123/infraro-core/compare/v0.18.6...v0.18.7) (2026-09-17)
 
 
