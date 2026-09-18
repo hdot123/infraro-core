@@ -16,6 +16,13 @@ on:
 permissions:
   contents: read
 
+# 2026-09-19 governance（VAL-CORE-003）：schedule 型串行（cancel-in-progress
+# false）。巡检幂等（冻结仓 open PR / 残留分支快照），两次重叠 run 无信息
+# 增量，排队即可；取消进行中腿反而可能截断 gh api 分页留下半份巡检面。
+concurrency:
+  group: gate2-cross-repo-inspection
+  cancel-in-progress: false
+
 jobs:
   cross-repo-inspection:
     name: Cross-repository Inspection

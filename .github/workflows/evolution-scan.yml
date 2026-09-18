@@ -80,6 +80,19 @@ permissions:
 jobs:
   scan:
     runs-on: ${{ fromJSON(inputs.runner || '"ubuntu-latest"') }}
+    # 2026-09-19 governance（VAL-CORE-003）：job 级串行（cancel-in-progress false）。
+    # 顶层 concurrency 被 INFRA-626 禁令钉死（workflow_call reusable 顶层与 caller
+    # 顶层组撞名 = GitHub run 级自死锁秒取消，2026-08-29 memory #1071 实测），
+    # 故本块在 job 级。组名自命名空间（evolution-scan-reusable- 前缀）确保与
+    # caller 顶层组（消费仓契约名 evolution-scan 等）永不同组——job 级组与
+    # 顶层组同名组合同样触发自死锁（job「scan」先例，故前缀必异）。
+    # 消费仓 caller 场景：caller 首选进入本组，串行化同样成立（per-repo 组，
+    # repository_id 分仓），与其自身顶层组（若有）名目不同、无死锁面。
+    # 语义：自扫定时 tick 每 30 分钟一次，串行不取消（tick-budget 幂等吸收
+    # 重复，防相邻 tick 排队堆积时被取消截断 findings 历史）。
+    concurrency:
+      group: evolution-scan-reusable-${{ github.repository_id }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write

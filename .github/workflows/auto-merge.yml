@@ -35,7 +35,11 @@ name: Auto Merge
 
 on:
   workflow_run:
-    workflows: ["CI", "QA", "Droid Auto Review", "Evolution Governance"]
+    # 2026-09-19 修复（orchestrator note）：补 'Quality Gate'。quality-gate 是
+    # 全绿链上最后完成的 check（ci-ok 内部等 droid-review、quality-gate 再等
+    # ci-ok/qa-ok，80min timeout 轮询聚合）——缺它时绿 PR 要等 */30 schedule
+    # 兜底才被合并（上会话实测 40 分钟延迟）。
+    workflows: ["CI", "QA", "Droid Auto Review", "Evolution Governance", "Quality Gate"]
     types: [completed]
   pull_request_target:
     types: [opened, synchronize, reopened]
@@ -48,9 +52,13 @@ on:
         required: false
         type: string
 
+# 2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。顶层只留 read 基线
+# （INFRA-688 兜底语义保持）；GITHUB_TOKEN 实际消费是 gh pr list/view（read），
+# 合并/评论/更新分支全部经 DISPATCH_TOKEN（PAT）。auto-merge job 级 write
+# 声明保持原顶层语义（最坏情况兜底），行为与下放前等价。
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
   checks: read
   actions: read
 
@@ -66,6 +74,12 @@ jobs:
   resolve:
     name: Resolve candidate PRs
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-004）：resolve 只读（gh pr list/view）
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
     # workflow_run 只有在结论为 success 时才尝试合并；其余事件各自自行门控。
     if: |
       github.event_name == 'pull_request_target' ||
@@ -118,6 +132,13 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.pr_numbers != '' && needs.resolve.outputs.pr_numbers != '[]'
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-004）：原顶层权限原样下放（write 面唯一
+    # 消费 job；合并凭证仍经 DISPATCH_TOKEN PAT，此声明为兜底语义）。
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      actions: read
     # INFRA-416：限定单腿时长。triage 各分支都是有界 API 调用，10 分钟
     # 足够；防止 gh/网络挂死导致 matrix 腿永久占位（schedule 每 30 分钟
     # 一轮，旧腿不退出会与新腿堆叠）。

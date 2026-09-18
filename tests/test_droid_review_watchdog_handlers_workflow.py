@@ -234,6 +234,19 @@ class TestSelfHostedSafety:
         assert handlers_data["jobs"]["cancel-on-ci-fail"]["timeout-minutes"] == 5
 
     def test_permissions_actions_write_only(self, handlers_data):
-        perms = handlers_data.get("permissions", {})
-        assert perms.get("actions") == "write"
-        assert "contents" not in perms, "权限最小化：handler 只需 actions: write"
+        """2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。
+
+        顶层只留 contents:read 基线（INFRA-688 兜底语义）；两个 handler job
+        各自带 actions:write（rerun/cancel 是其唯一 API 写面），无其他 scope。
+        """
+        top = handlers_data.get("permissions", {})
+        assert top.get("contents") == "read", f"顶层权限基线必须 contents:read，实际: {top}"
+        assert "actions" not in top, "顶层不得残留 actions（已下放 job 级）"
+        for job_name in ("self-heal-rerun", "cancel-on-ci-fail"):
+            perms = handlers_data["jobs"][job_name].get("permissions", {})
+            assert perms.get("actions") == "write", (
+                f"{job_name}: rerun/cancel 需要 actions:write，实际: {perms}"
+            )
+            assert "contents" not in perms, (
+                f"{job_name}: 权限最小化——handler 只需 actions:write，实际: {perms}"
+            )

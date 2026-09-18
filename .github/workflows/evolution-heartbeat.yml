@@ -77,6 +77,14 @@ permissions:
 jobs:
   heartbeat:
     runs-on: ${{ fromJSON(inputs.runner || '"ubuntu-latest"') }}
+    # 2026-09-19 governance（VAL-CORE-003）：job 级串行（cancel-in-progress false）。
+    # 同 evolution-scan.yml：顶层被 INFRA-626 禁令钉死，组名自命名空间前缀 +
+    # repository_id 分仓（per-repo 组）。自扫心跳每 2h 一次且幂等（stale 探活 +
+    # 自愈 dispatch），串行不取消；前缀确保与任何 caller 顶层组永不同组（job 级
+    # 组与顶层组撞名同样触发自死锁）。
+    concurrency:
+      group: evolution-heartbeat-reusable-${{ github.repository_id }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write

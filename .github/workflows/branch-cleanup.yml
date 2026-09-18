@@ -30,9 +30,10 @@ on:
         type: string
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: read
+  # 2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。cleanup job 的
+  # 实际写操作全部经 composite action 的 dispatch-token（PAT）执行，
+  # GITHUB_TOKEN 仅需读基线兜底；顶层留 read 防新增 job 漏声明时扩权。
+  contents: read
 
 concurrency:
   group: branch-cleanup
@@ -42,6 +43,12 @@ jobs:
   cleanup:
     name: cleanup
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-004）：原顶层权限原样下放（语义不变），
+    # 收窄 GITHUB_TOKEN 的 write 暴露面到唯一消费 job。
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
     steps:
       - name: Branch Cleanup
         uses: hdot123/infraro-core/actions/branch-cleanup@3695445b1d8df8997de35d39256ffe596d229c8c # v0.16.0 (PR #266)

@@ -12,8 +12,11 @@ on:
     types: [droid-task]
 
 permissions:
-  contents: write
-  issues: write
+  # 2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。顶层只留 read
+  # 基线（INFRA-688 兜底语义保持：新增 job 忘记声明时回落只读）。
+  # execute job 需要 contents:write（checkout target repo 推送修复分支）+
+  # issues:write（if:failure() 兜底建 Issue），见 job 级声明。
+  contents: read
 
 concurrency:
   # 二级并发护栏（R1 设计 §3.2）：workflow 级 team 组（准入闸）+ job 级 task 组（单飞）。
@@ -31,6 +34,14 @@ jobs:
     name: Execute droid task
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # 2026-09-19 governance（VAL-CORE-004）：原顶层 write 下放至此。GITHUB_TOKEN
+    # 实际不承担写操作（checkout 用 DISPATCH_TOKEN、droid 用 DISPATCH_TOKEN、
+    # 兜底 Issue 用 DISPATCH_TOKEN），声明 write 仅为最坏情况兜底（如未来某步
+    # 漏带显式凭证时 API 调用不至于静默 403）——语义与下放前完全一致，只是
+    # 收窄到唯一需要它的 job。
+    permissions:
+      contents: write
+      issues: write
     # task 级二级分组（原 workflow 级单飞语义下沉到 job 级）：同 task_id 的执行不并发，
     # 溢出同样为 drop。task 组与 team 组为包含关系（task 属于单一 team），不会互相死锁。
     concurrency:
