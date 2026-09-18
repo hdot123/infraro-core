@@ -1077,7 +1077,13 @@ def test_workflow_triggers_and_permissions_preserved():
     assert "branch" in triggers["workflow_dispatch"]["inputs"]
 
     perms = data["permissions"]
-    assert perms == {"contents": "write", "issues": "write", "pull-requests": "read"}
+    # 2026-09-19 governance（VAL-CORE-004）：write 下放 job 级——顶层只留
+    # read 基线，原 write 面原样落在 cleanup job。
+    assert perms == {"contents": "read"}, f"top-level must be read baseline, got {perms}"
+    job_perms = data["jobs"]["cleanup"]["permissions"]
+    assert job_perms == {"contents": "write", "issues": "write", "pull-requests": "read"}, (
+        f"cleanup job keeps original write scopes, got {job_perms}"
+    )
 
 
 # ============================================================================

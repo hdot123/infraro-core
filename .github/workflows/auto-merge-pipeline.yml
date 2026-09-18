@@ -51,9 +51,14 @@ on:
         description: '合并/更新分支/评论凭证（caller 侧 DISPATCH_TOKEN PAT，不受 GITHUB_TOKEN 递归抑制）'
         required: true
 
+# 2026-09-19 governance（VAL-CORE-004）：权限下放 job 级。顶层只留 read 基线
+# （INFRA-688 兜底语义保持）；write 面收窄到实际执行的 job。GITHUB_TOKEN 在
+# 两 job 的实际消费都是 gh pr list/view（read）；合并/评论/更新分支全部经
+# dispatch_token（PAT）。job 级 write 声明保持原顶层语义（最坏情况兜底：
+# 某步漏带显式凭证时不静默 403），行为与下放前等价。
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
   checks: read
   actions: read
 
@@ -61,6 +66,11 @@ jobs:
   resolve:
     name: Resolve candidate PRs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
     outputs:
       pr_numbers: ${{ steps.resolve.outputs.pr_numbers }}
     steps:
@@ -107,6 +117,13 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.pr_numbers != '' && needs.resolve.outputs.pr_numbers != '[]'
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-004）：原顶层权限原样下放（write 面唯一
+    # 消费 job；合并凭证仍经 dispatch_token PAT，此声明为兜底语义）。
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      actions: read
     # INFRA-416：限定单腿时长。triage 各分支都是有界 API 调用，10 分钟
     # 足够；防止 gh/网络挂死导致 matrix 腿永久占位（schedule 周期轮换，
     # 旧腿不退出会与新腿堆叠）。

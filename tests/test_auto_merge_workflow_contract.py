@@ -327,13 +327,33 @@ class TestReusablePipelineTemplateContract:
         assert "secrets['" not in raw, "secrets 消费点不得使用括号取键形态（secrets['…']）"
 
     def test_permissions_block(self) -> None:
-        perms = _load_doc(AUTO_MERGE_PIPELINE_YML).get("permissions", {})
-        assert perms == {
+        """2026-09-19 governance（VAL-CORE-004）：write 下放 job 级。
+
+        顶层只留 read 基线（四 scope 全 read；INFRA-688 兜底语义保持）；
+        resolve job 只读；auto-merge job 保留原顶层 write 面（contents/
+        pull-requests write——合并凭证实际经 dispatch_token PAT，job 级
+        声明为最坏情况兜底，行为与下放前等价）。
+        """
+        doc = _load_doc(AUTO_MERGE_PIPELINE_YML)
+        read_baseline = {
+            "contents": "read",
+            "pull-requests": "read",
+            "checks": "read",
+            "actions": "read",
+        }
+        assert doc.get("permissions", {}) == read_baseline, (
+            f"reusable 顶层权限必须全 read 基线，实际: {doc.get('permissions')}"
+        )
+        jobs = doc["jobs"]
+        assert jobs["resolve"].get("permissions") == read_baseline, (
+            f"resolve 只读，实际: {jobs['resolve'].get('permissions')}"
+        )
+        assert jobs["auto-merge"].get("permissions") == {
             "contents": "write",
             "pull-requests": "write",
             "checks": "read",
             "actions": "read",
-        }
+        }, f"auto-merge job 保留原 write 面，实际: {jobs['auto-merge'].get('permissions')}"
 
     def test_all_jobs_self_hosted(self) -> None:
         for job_name, job in _load_doc(AUTO_MERGE_PIPELINE_YML)["jobs"].items():
