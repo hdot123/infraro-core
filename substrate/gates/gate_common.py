@@ -34,6 +34,8 @@ ENGINE_REPO_URL = f"https://github.com/{ENGINE_REPO_SLUG}.git"
 # （tests/test_no_old_repo_references.py）禁止全仓出现旧仓全名字面量；
 # gate2 对冻结仓的在途 PR/分支巡检是对冻结仓的合法监视面（存量检测），
 # 不是存活引用——因此源码不携带全名，仅拼接。
+# 片段组装模式：owner/org 组装自_parts_（hdot123-org / infra-core）
+# 永不作为完整字面量出现；对应 gate0-exemptions.md 中 LOCAL-ONE 行（历史登记）。
 _FROZEN_REPO_OWNER = "hdot123-org"
 FROZEN_REPO_SLUGS = tuple(
     f"{_FROZEN_REPO_OWNER}/{name}" for name in ("infra-core", "memory", "mencbo")
