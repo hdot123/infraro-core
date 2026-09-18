@@ -174,7 +174,10 @@ runs:
           echo "UV_CACHE_DIR=$UV_CACHE_DIR" >> "$GITHUB_ENV"
         fi
         
-        echo "PIP_CACHE_DIR=$PIP_CACHE_DIR" >> "$GITHUB_ENV"
+        # Only set PIP_CACHE_DIR if it's not empty (prevent empty string pollution)
+        if [ -n "$PIP_CACHE_DIR" ]; then
+          echo "PIP_CACHE_DIR=$PIP_CACHE_DIR" >> "$GITHUB_ENV"
+        fi
 
         # venv pip 升级（main 原有语义，本 PR 重构时曾遗漏致 rebase 后 advisory 红）：
         # ensurepip 自带 pip 24.0 已积累 7 条 PYSEC 公告（pip-audit 扫描 venv 自身，

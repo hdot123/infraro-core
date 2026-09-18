@@ -111,8 +111,11 @@ jobs:
           # Fetch the release branch to make it available locally
           git fetch origin "$BRANCH":"$BRANCH"
           
+          # Checkout the release branch to make sure uv lock runs on the correct branch
+          git checkout "$BRANCH"
+          
           # relock：更新 uv.lock 根包版本至 pyproject 当前版本（幂等——
-          # 已对齐时 uv lock 不产生 diff）
+          # 已对齐時 uv lock 不產生 diff）
           # Using env -u to remove UV_CACHE_DIR to prevent empty string pollution
           echo "Running uv lock with UV_CACHE_DIR removed to avoid parameter error"
           env -u UV_CACHE_DIR uv lock
