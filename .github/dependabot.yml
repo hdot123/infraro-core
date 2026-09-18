@@ -41,3 +41,9 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(ci)"
+    # Engine workflows are owner-only (governance protection blocks
+    # non-hdot123 authors from modifying .github/workflows/**).
+    # Only track composite actions under actions/**, not workflows.
+    allow:
+      - dependency-name: "actions/*"
+        dependency-type: "direct"
