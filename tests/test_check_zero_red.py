@@ -161,12 +161,20 @@ type-check\tsuccess"""
                 red_checks.append(f"{name_key}\t{conclusion}")
 
         # Should have no red checks since the latest of each name is success
-        assert len(red_checks) == 0, f"Latest conclusion of each name should be checked, got: {red_checks}"
+        assert len(red_checks) == 0, (
+            f"Latest conclusion of each name should be checked, got: {red_checks}"
+        )
 
         # Verify that the dict contains the latest conclusion for each name
-        assert check_dict["pytest"][1] == "success", "Should take latest pytest conclusion (success)"
-        assert check_dict["lint-bundle"][1] == "success", "Should take latest lint-bundle conclusion (success)"
-        assert check_dict["type-check"][1] == "success", "Should take latest type-check conclusion (success)"
+        assert check_dict["pytest"][1] == "success", (
+            "Should take latest pytest conclusion (success)"
+        )
+        assert check_dict["lint-bundle"][1] == "success", (
+            "Should take latest lint-bundle conclusion (success)"
+        )
+        assert check_dict["type-check"][1] == "success", (
+            "Should take latest type-check conclusion (success)"
+        )
 
 
 class TestCIWorkflowZeroRed:
