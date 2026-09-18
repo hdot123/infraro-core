@@ -86,7 +86,7 @@ for team in cfg.get('teams', {}).values():
             print(f'{path}|{gh}')
             exit(0)
 # Default fallback
-print(os.path.expanduser('~/memory') + '|hdot123/infraro-core')
+print(os.path.expanduser('~/infraro-core') + '|hdot123/infraro-core')
 " 2>/dev/null && return
     fi
 
@@ -97,7 +97,7 @@ print(os.path.expanduser('~/memory') + '|hdot123/infraro-core')
     fi
 
     # Strategy 3: Hardcoded fallback (last resort)
-    echo "${HOME}/memory|hdot123/infraro-core"
+    echo "${HOME}/infraro-core|hdot123/infraro-core"
 }
 
 # === 并发保护 (M1: atomic flock + M2: PID liveness check) ===
