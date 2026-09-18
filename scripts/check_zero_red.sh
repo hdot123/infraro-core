@@ -21,9 +21,11 @@ COMMIT_SHA="$2"
 echo "Scanning all check-runs for commit: $COMMIT_SHA"
 
 # Fetch all check-runs (handle pagination)
+# Exclude ci-ok itself to prevent circular self-reference
+# Group by name and take latest completed to handle reruns
 ALL_CHECKS=$(gh api "repos/${REPOSITORY}/commits/${COMMIT_SHA}/check-runs" \
   --paginate \
-  --jq '.check_runs[] | select(.status == "completed") | "\(.name)\t\(.conclusion)"')
+  --jq '[.check_runs[] | select(.status == "completed") | select(.name != "ci-ok")] | group_by(.name) | map(sort_by(.started_at) | last) | .[] | "\(.name)\t\(.conclusion)"')
 
 echo "All completed check-runs:"
 echo "$ALL_CHECKS"
