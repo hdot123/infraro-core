@@ -144,7 +144,7 @@ type-check\tsuccess"""
 
         # Parse the output and simulate grouping by name, taking latest
         lines = mock_output.strip().split("\n")
-        
+
         # Group by name and take the last occurrence for each name (simulating sort_by(.started_at) | last)
         check_dict = {}
         for line in lines:
@@ -153,7 +153,7 @@ type-check\tsuccess"""
                 name, conclusion = parts
                 # Overwrite with latest (last in list) - simulating the group_by(.name) | map(sort_by(.started_at) | last) pattern
                 check_dict[name] = (name, conclusion)
-        
+
         # Now check for non-success conclusions among unique names
         red_checks = []
         for name, (name_key, conclusion) in check_dict.items():
@@ -162,7 +162,7 @@ type-check\tsuccess"""
 
         # Should have no red checks since the latest of each name is success
         assert len(red_checks) == 0, f"Latest conclusion of each name should be checked, got: {red_checks}"
-        
+
         # Verify that the dict contains the latest conclusion for each name
         assert check_dict["pytest"][1] == "success", "Should take latest pytest conclusion (success)"
         assert check_dict["lint-bundle"][1] == "success", "Should take latest lint-bundle conclusion (success)"
