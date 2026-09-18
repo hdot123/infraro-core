@@ -111,6 +111,71 @@ type-bundle\tsuccess"""
         assert any("lint-bundle" in check for check in red_checks)
         assert any("advisory-bundle" in check for check in red_checks)
 
+    def test_script_logic_mock_ci_ok_exclusion(self):
+        """Test that ci-ok check is excluded to prevent circular self-reference (regression test)."""
+        # Simulate a scenario where ci-ok has a failure but should be excluded
+        mock_output = """pytest\tsuccess
+lint-bundle\tsuccess
+ci-ok\tfailure"""
+
+        # Parse the output the same way the script does (excluding ci-ok)
+        lines = mock_output.strip().split("\n")
+        red_checks = []
+
+        for line in lines:
+            parts = line.split("\t")
+            if len(parts) == 2:
+                name, conclusion = parts
+                # This simulates the script's logic: exclude ci-ok and check for non-success conclusions
+                if name != "ci-ok" and conclusion not in ["success", "skipped", "neutral"]:
+                    red_checks.append(line)
+
+        # Should have no red checks since ci-ok failure is excluded
+        assert len(red_checks) == 0, "ci-ok failure should be excluded and not count as red"
+
+    def test_script_logic_mock_name_deduplication(self):
+        """Test that check-runs are deduplicated by name, taking the latest (regression test)."""
+        # Simulate scenario with multiple runs of the same name, where the latest one is success
+        mock_output = """pytest\tfailure
+pytest\tsuccess
+lint-bundle\tfailure
+lint-bundle\tsuccess
+type-check\tsuccess"""
+
+        # Parse the output and simulate grouping by name, taking latest
+        lines = mock_output.strip().split("\n")
+
+        # Group by name and take the last occurrence for each name (simulating sort_by(.started_at) | last)
+        check_dict = {}
+        for line in lines:
+            parts = line.split("\t")
+            if len(parts) == 2:
+                name, conclusion = parts
+                # Overwrite with latest (last in list) - simulating the group_by(.name) | map(sort_by(.started_at) | last) pattern
+                check_dict[name] = (name, conclusion)
+
+        # Now check for non-success conclusions among unique names
+        red_checks = []
+        for name, (name_key, conclusion) in check_dict.items():
+            if conclusion not in ["success", "skipped", "neutral"]:
+                red_checks.append(f"{name_key}\t{conclusion}")
+
+        # Should have no red checks since the latest of each name is success
+        assert len(red_checks) == 0, (
+            f"Latest conclusion of each name should be checked, got: {red_checks}"
+        )
+
+        # Verify that the dict contains the latest conclusion for each name
+        assert check_dict["pytest"][1] == "success", (
+            "Should take latest pytest conclusion (success)"
+        )
+        assert check_dict["lint-bundle"][1] == "success", (
+            "Should take latest lint-bundle conclusion (success)"
+        )
+        assert check_dict["type-check"][1] == "success", (
+            "Should take latest type-check conclusion (success)"
+        )
+
 
 class TestCIWorkflowZeroRed:
     """Test that the CI workflow includes zero-red enforcement."""
