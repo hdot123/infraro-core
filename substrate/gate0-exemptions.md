@@ -35,7 +35,7 @@
 | `missing from repositories.yml` | LOCAL-ONE | hdot123 | substrate-inventory-bookkeeping | 本地 registry 对账面（CI 不可见），声明仓待补登 |
 | `ERROR_REPO_MAP` | LOCAL-ONE | hdot123 | substrate-foundations-linear-webhook | Worker 路由双侧一致性为本地/私有面（hdot123/webhook 私有，CI token 不可读） |
 
-注：hdot123-org 三冻结仓 GitHub 可见面 residual branches 与 closed PR 已由 legacy-repo-disposition 清零，旧世界终局封存（old-world-archive-endgame）前仅存 LOCAL-ONE 项。后续新漂移直接转红。
+注：hdot123-org 三冻结仓 GitHub 可见面 residual branches 与 closed PR 已处置。由于 archived 仓库保留历史记录，closed PRs 未删除但仍视为已处置完成。旧世界终局封存（old-world-archive-endgame）前仅存 LOCAL-ONE 项。后续新漂移直接转红。
 
 ## Gate 3: registered exposure stock (path prefixes)
 
