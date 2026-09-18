@@ -208,8 +208,7 @@ class TestSubstrateGates:
         """gate-tests 禁止 job 级 continue-on-error（infra 失败保持红可见）。"""
         gate = ci_jobs["gate-tests"]
         assert gate.get("continue-on-error") is None, (
-            "gate-tests 不得设置 job 级 continue-on-error（checkout/venv 等 "
-            "infra 失败必须红可见）"
+            "gate-tests 不得设置 job 级 continue-on-error（checkout/venv 等 infra 失败必须红可见）"
         )
 
     def test_gate_steps_have_no_continue_on_error(self, ci_jobs: dict[str, dict[str, Any]]) -> None:
