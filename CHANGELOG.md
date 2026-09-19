@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.18.9](https://github.com/hdot123/infraro-core/compare/v0.18.8...v0.18.9) (2026-09-19)
+
+
+### Bug Fixes
+
+* **ci:** 分支清理 caller 与模板的 secret 引用大小写收敛 ([#116](https://github.com/hdot123/infraro-core/issues/116)) ([3e77833](https://github.com/hdot123/infraro-core/commit/3e77833f37a8bb417a68c5d30ebbdde67f244ada))
+* **trigger-error-droid:** update fallback path from ~/memory to ~/infraro-core ([#81](https://github.com/hdot123/infraro-core/issues/81)) ([ccfda3c](https://github.com/hdot123/infraro-core/commit/ccfda3c18439f8d880120135c5c3dfff47fbc5b6))
+* **webhook:** update repository references from hdot123-org/memory to hdot123/infraro-core ([#80](https://github.com/hdot123/infraro-core/issues/80)) ([f94aa9d](https://github.com/hdot123/infraro-core/commit/f94aa9dc42f22e87fb9b2fde812ad6191d7f2563))
+
+
+### Documentation
+
+* 入口文档治理段落对齐终态 + 锁文件 relock ([#118](https://github.com/hdot123/infraro-core/issues/118)) ([01c8b6e](https://github.com/hdot123/infraro-core/commit/01c8b6ed9a4c71724eaeb40237d61db65afb6b4a))
+
 ## [0.18.8](https://github.com/hdot123/infraro-core/compare/v0.18.7...v0.18.8) (2026-09-18)
 
 
