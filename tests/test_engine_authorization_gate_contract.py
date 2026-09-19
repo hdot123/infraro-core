@@ -411,8 +411,9 @@ class TestGateJobPresence:
         assert step_env.get("GH_TOKEN") == "${{ github.token }}", (
             f"{rel} 守卫必须用 github.token（GITHUB_TOKEN），不消费 PAT"
         )
-        assert step_env.get("VARS_VALUE") == f"${{{{ vars.{VARIABLE_NAME} }}}}", (
-            f"{rel} 守卫必须注入 vars 上下文值（零权限路径），实际 {step_env.get('VARS_VALUE')!r}"
+        assert step_env.get("VARS_VALUE") == f"${{{{ vars.{VARIABLE_NAME} || '' }}}}", (
+            f"{rel} 守卫必须注入 vars 上下文值（零权限路径）且带 || '' 兜底"
+            f"（variable 允许缺席，见命名契约 vars 存在性测试），实际 {step_env.get('VARS_VALUE')!r}"
         )
 
 
