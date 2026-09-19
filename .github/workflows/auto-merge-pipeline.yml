@@ -63,7 +63,83 @@ permissions:
   actions: read
 
 jobs:
+  # ── Job 0: 引擎消费授权门（m6-engine-authorization-gate）──
+  # 判定：本仓 repo variable ENGINE_CONSUMERS 含 authorized 令牌即放行；
+  # 引擎仓 hdot123/infraro-core 自身豁免。未授权 → fail-loud（下游 job 因
+  # needs 不启动）。凭证面：GITHUB_TOKEN 只读 actions:read，不消费 PAT。
+  # 秒级 job，不延长管线。
+  authorization-gate:
+    name: authorization-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      actions: read
+    steps:
+      - name: Verify engine consumer authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.event.repository.full_name || github.repository }}
+        run: |
+          set -euo pipefail
+
+          # 引擎授权门（engine authorization gate）——未授权消费引擎的仓在管线入口
+          # fail-loud，不静默跳过。判定链：
+          #   ① 引擎仓自身豁免（默认 hdot123/infraro-core）
+          #   ② 读本仓 repo variable（GITHUB_TOKEN 只读最小面 actions:read）
+          #   ③ 值含 authorized 令牌 → 放行；缺席 / 异值 / 读取失败 → 失败
+          REPO="${REPO:-${GITHUB_REPOSITORY:-}}"
+          VARIABLE_NAME="${ENGINE_AUTHORIZATION_VARIABLE:-ENGINE_CONSUMERS}"
+          AUTHORIZED_TOKEN="${ENGINE_AUTHORIZATION_TOKEN:-authorized}"
+          EXEMPT_REPOS="${ENGINE_AUTHORIZATION_EXEMPT_REPOS:-hdot123/infraro-core}"
+          ALERT="未授权消费引擎，走授权流程"
+
+          if [ -z "${REPO}" ]; then
+            echo "::error::${ALERT}：无法解析本仓 full_name（REPO / GITHUB_REPOSITORY 均为空）"
+            exit 1
+          fi
+
+          for exempt in ${EXEMPT_REPOS}; do
+            if [ "${REPO}" = "${exempt}" ]; then
+              echo "Authorization gate: ${REPO} 是引擎仓自身，豁免授权检查（exempt）"
+              exit 0
+            fi
+          done
+
+          RAW="$(mktemp)"
+          rc=0
+          gh api "repos/${REPO}/actions/variables/${VARIABLE_NAME}" >"${RAW}" 2>&1 || rc=$?
+          if [ "${rc}" -ne 0 ]; then
+            if grep -q "404" "${RAW}"; then
+              echo "::error::${ALERT}：${REPO} 未设置 repo variable ${VARIABLE_NAME}（授权四步：variable → PAT → runner → 6 阶段验收）"
+            else
+              echo "::error::${ALERT}：${REPO} 授权状态读取失败（rc=${rc}）：$(head -c 400 "${RAW}")"
+            fi
+            rm -f "${RAW}"
+            exit 1
+          fi
+
+          VALUE="$(jq -r '.value // ""' <"${RAW}")"
+          rm -f "${RAW}"
+
+          MATCHED=0
+          IFS=',' read -r -a TOKENS <<<"${VALUE}" || true
+          for token in "${TOKENS[@]:-}"; do
+            normalized="$(printf '%s' "${token}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+            if [ "${normalized}" = "${AUTHORIZED_TOKEN}" ]; then
+              MATCHED=1
+            fi
+          done
+
+          if [ "${MATCHED}" -eq 1 ]; then
+            echo "Authorization gate: ${REPO} authorized（${VARIABLE_NAME}=${VALUE}）"
+            exit 0
+          fi
+
+          echo "::error::${ALERT}：${REPO} 的 ${VARIABLE_NAME} 当前值为 '${VALUE}'，未包含授权令牌 '${AUTHORIZED_TOKEN}'"
+          exit 1
+
   resolve:
+    needs: authorization-gate
     name: Resolve candidate PRs
     runs-on: ubuntu-latest
     permissions:

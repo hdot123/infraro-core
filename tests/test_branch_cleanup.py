@@ -1021,8 +1021,11 @@ def test_workflow_calls_composite_action():
 
     # Naming contract: workflow name and job key are load-bearing
     # (check-name contracts / auto-merge wiring depend on them)
+    # 2026-09-19 m6-engine-authorization-gate：入口新增授权门 job（消费仓
+    # 未授权 fail-loud），cleanup 受门；守卫语义/防漂移由
+    # tests/test_engine_authorization_gate_contract.py 锁定（改拓扑两处同改）。
     assert data["name"] == "Branch Cleanup"
-    assert list(data["jobs"].keys()) == ["cleanup"]
+    assert list(data["jobs"].keys()) == ["authorization-gate", "cleanup"]
 
     steps = data["jobs"]["cleanup"]["steps"]
     uses_steps = [s for s in steps if "uses" in s]

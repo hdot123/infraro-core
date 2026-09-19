@@ -226,6 +226,9 @@ untracked 文件不拦截派发（会话层保护兜底，session 8c635f22 实�
 1. 当 infra-core 可复用 workflow 顶层新增 `permissions` 条目时，消费方薄调用方必须同步放行对应权限
 2. 调用方的 job-level permissions 同样需要覆盖 callee 所需集合
 3. 升级 infra-core pin 版本时，必须核对 callee 顶层权限 vs 调用方授予集
+4. 引擎授权门（§9）在入口 job 声明 `actions: read` 读 repo variable——caller 的
+   顶层/job 级权限集必须含 `actions: read`（或 `actions: write`），否则授权门
+   读取失败会 fail-closed 拦停整条管线
 
 **实例**：`actions: read` 由 PR #176（commit 71917c1）引入，自 v0.10.0 起存在。
 PR #1113 把 infra-core pin 从 v0.7.2 直升 v0.11.1 的大跨跳跨过了引入版本，
@@ -275,3 +278,38 @@ python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 
 首次 PR 触发 `Evolution Governance`（若接入该门禁）与 scan 定时器后，
 在 Actions 页确认 workflow 注册名与本表一致。
+
+## 9. 引擎授权门（Engine Authorization Gate）
+
+引擎管线入口（`auto-merge-pipeline` / `droid-review-shards` / `branch-cleanup`）
+带 **授权门 job**：进入管线前读本仓 repo variable 判定消费授权，未授权的仓在
+入口秒级 fail-loud（`未授权消费引擎，走授权流程`），下游 job 因 `needs` 不会
+启动。引擎仓 `hdot123/infraro-core` 自身豁免。判定只消费只读 `GITHUB_TOKEN`
+（`actions: read`），不依赖 PAT、不延长管线。
+
+### 授权三件套（缺一不可）
+
+| 件套 | 载体 | 作用 |
+|---|---|---|
+| ① variable | 消费仓 repo variable `ENGINE_CONSUMERS=authorized` | 授权门判定源（缺失/异值 = 未授权） |
+| ② PAT 范围 | 消费仓 `DISPATCH_TOKEN`（fine-grained：Contents RW + Pull requests RW + Actions R，仓范围含本仓） | auto-merge / branch-cleanup 的写操作凭证 |
+| ③ runner 注册 | 消费仓 self-hosted runner（`pve-runner-<repo>`）在线且被 runner group 选中 | droid-review / evolution 系 job 的执行载体 |
+
+### 授权四步（顺序执行）
+
+1. **variable**：`gh variable set ENGINE_CONSUMERS --body authorized -R <org>/<repo>`
+   ——写入后授权门对该仓放行（未写入时所有引擎管线入口对该仓 fail-loud）。
+2. **PAT**：owner 侧创建 fine-grained PAT（仅本仓；Contents RW / Pull requests RW /
+   Actions R）→ `gh secret set DISPATCH_TOKEN -R <org>/<repo>`（值不落仓库、不落日志）。
+3. **runner**：`pve-runner-<repo>` 注册在线，且 runner group 的 selected repositories
+   含本仓（只验标签匹配不算过）。
+4. **6 阶段验收**：按 `engine-onboarding-gateway` 清单逐项验收（静态契约 → 引擎试扫 →
+   平台配置 → 端到端 → 故障处置 → 验收报告），全 ✅/➖ 才算接入完成。
+
+> **守卫 + 审计**：入口守卫在所有引擎管线入口生效；每周一 02:00 UTC 的
+> `Engine Consumer Audit` 扫描全账号对引擎的 workflow 引用，与各仓
+> `ENGINE_CONSUMERS` 对照，未授权引用在引擎仓开幂等告警 Issue（同指纹只追加
+> 评论；零违规恢复时自动评论并关闭）。
+>
+> **权限同步**：调用引擎 reusable workflow 的 caller 需授予 `actions: read`
+> （授权门读 repo variable 的最小面），见 §7 权限同步守则。
