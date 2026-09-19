@@ -1,0 +1,183 @@
+# Actions Budget Guard — 周期汇总 27 治理仓 runs 分钟数/失败率，超阈值幂等开 Issue
+# (governance mission M1, VAL-CORE-008；architecture.md D3)
+#
+# 设计要点：
+# - 数据面：repo workflow-runs API（created>=窗口起点），duration 以
+#   run_started_at→updated_at 为代理秒数（billing API 精确额度属可选增强，
+#   需用户自建 fine-grained PAT，本 mission 明确不做——D3）。
+# - 阈值（architecture.md D3 默认）：单仓周分钟 > 2000、失败率 > 30%、
+#   账号周总分钟 > 20000。失败口径 = completed runs 中 conclusion ∈
+#   {failure, startup_failure}（cancelled 是人工行为，不计失败）。
+# - 幂等：Issue 指纹 = 标题 "Actions budget alert: <since> ~ <until>"
+#   （每窗口一个 open issue）；同窗口重跑只追加 comment，不重复开单。
+# - 凭证：DISPATCH_TOKEN（已有 PAT，跨仓读私有 runs + 开 Issue）；
+#   缺席时退回 GITHUB_TOKEN（公开仓可读、本仓 Issue 可开，私有仓记
+#   unreachable 并跳过）——不依赖新凭证。
+# - 结论输出：无论是否违规都写 GITHUB_STEP_SUMMARY + 日志（VAL-CORE-008
+#   要求 dispatch 有结论输出）；违规才开 Issue；仅基础设施全损（0 仓可读）
+#   才让 job 失败。
+
+name: Actions Budget Guard
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'  # weekly, Monday 01:00 UTC
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: 'Aggregation window in days (default 7)'
+        required: false
+        default: '7'
+        type: string
+
+permissions:
+  # 2026-09-19 governance（core-files-and-budget）：最小权限基线，
+  # issues:write 仅下放到唯一聚合 job。
+  contents: read
+
+concurrency:
+  group: actions-budget-guard
+  cancel-in-progress: false
+
+jobs:
+  budget-report:
+    name: budget-report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+    steps:
+      - name: Checkout (local composite actions)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v4
+      - name: Ensure jq
+        uses: ./.github/actions/ensure-jq
+      - name: Aggregate runs and enforce thresholds
+        env:
+          WINDOW_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.window_days || '7' }}
+        run: |
+          set -euo pipefail
+
+          OWNER="hdot123"
+          PER_REPO_MAX_MINUTES=2000
+          MAX_FAILURE_RATE_PCT=30
+          ACCOUNT_MAX_MINUTES=20000
+          LABEL="automation"
+
+          SINCE=$(date -u -d "-${WINDOW_DAYS} days" +%Y-%m-%d)
+          UNTIL=$(date -u +%Y-%m-%d)
+
+          # 27 治理仓全集（audit-baseline 分层：Tier A5 + B15 + C7）
+          # shellcheck disable=SC2086  # intentional word-splitting over repo list
+          REPOS="infraro-core infraro webhook consumer-a consumer-b \
+          workbot tiku jiaoxue wangguan cloudflare-12-work-1 linear-dashboard youzy \
+          gateway-admin cf-registry global-kb cf-pages-site MyProject github go-to-cj \
+          DigitalPlat-Domains-auto-renew Service-Map oed-doc TwinAnchor Openclaw e2v pass-env meskills"
+
+          TSV="$(mktemp)"
+          AGG="$(mktemp)"
+          FETCHED_OK=0
+          FAILED_FETCH=""
+
+          for repo in $REPOS; do
+            echo "Fetching completed runs: ${OWNER}/${repo} (created >= ${SINCE})" >&2
+            if gh api -X GET "repos/${OWNER}/${repo}/actions/runs" \
+                -f created=">=${SINCE}" -f per_page=100 --paginate \
+                --jq '.workflow_runs[]
+                       | select(.status == "completed")
+                       | [(.conclusion // "none"),
+                          (((.updated_at | sub("\\.[0-9]+Z$"; "Z")) | fromdateiso8601)
+                           - ((.run_started_at // .created_at) | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601))]
+                       | @tsv' \
+                | sed "s/^/${repo}\t/" >> "$TSV"; then
+              FETCHED_OK=$((FETCHED_OK + 1))
+            else
+              echo "::warning::fetch failed for ${repo} (unreachable with current token) — excluded from aggregation" >&2
+              FAILED_FETCH="${FAILED_FETCH} ${repo}"
+            fi
+          done
+
+          if [ "$FETCHED_OK" -eq 0 ]; then
+            echo "::error::all 27 repos unreachable — token broken or network down, refusing to report an empty window"
+            exit 1
+          fi
+
+          # 每仓聚合：completed 数 / failure 数 / 代理总秒数
+          awk -F'\t' '
+            { c[$1]++; s[$1]+=$3; if ($2=="failure" || $2=="startup_failure") f[$1]++ }
+            END { for (r in c) printf "%s\t%d\t%d\t%d\n", r, c[r], f[r]+0, s[r] }
+          ' "$TSV" | sort > "$AGG"
+
+          TOTAL_MINUTES=0
+          VIOLATIONS=""
+          TABLE="| repo | completed runs | failures | failure rate | minutes (proxy) |
+          |---|---:|---:|---:|---:|
+          "
+
+          while IFS=$'\t' read -r repo completed failures seconds; do
+            minutes=$(( seconds / 60 ))
+            TOTAL_MINUTES=$(( TOTAL_MINUTES + minutes ))
+            if [ "$completed" -gt 0 ]; then
+              rate=$(( failures * 100 / completed ))
+            else
+              rate=0
+            fi
+            TABLE="${TABLE}| ${repo} | ${completed} | ${failures} | ${rate}% | ${minutes} |
+          "
+            if [ "$minutes" -gt "$PER_REPO_MAX_MINUTES" ]; then
+              VIOLATIONS="${VIOLATIONS}- ${repo}: ${minutes} min/week > ${PER_REPO_MAX_MINUTES} min threshold
+          "
+            fi
+            if [ "$completed" -gt 0 ] && [ "$rate" -gt "$MAX_FAILURE_RATE_PCT" ]; then
+              VIOLATIONS="${VIOLATIONS}- ${repo}: failure rate ${rate}% > ${MAX_FAILURE_RATE_PCT}% threshold
+          "
+            fi
+          done < "$AGG"
+
+          if [ "$TOTAL_MINUTES" -gt "$ACCOUNT_MAX_MINUTES" ]; then
+            VIOLATIONS="${VIOLATIONS}- account total: ${TOTAL_MINUTES} min/week > ${ACCOUNT_MAX_MINUTES} min threshold
+          "
+          fi
+
+          if [ -n "$VIOLATIONS" ]; then
+            VERDICT="VIOLATIONS (issue will be opened/updated)"
+          else
+            VERDICT="OK — no threshold exceeded, no issue opened"
+          fi
+
+          SUMMARY="## Actions Budget Guard (${SINCE} → ${UNTIL})
+
+          - Repos scanned: ${FETCHED_OK}/27${FAILED_FETCH:+ (unreachable:${FAILED_FETCH})}
+          - Account total (proxy): **${TOTAL_MINUTES} min** / week (threshold ${ACCOUNT_MAX_MINUTES})
+          - Per-repo thresholds: ${PER_REPO_MAX_MINUTES} min/week, failure rate > ${MAX_FAILURE_RATE_PCT}%
+
+          ${TABLE}
+          ### Verdict
+
+          ${VIOLATIONS:-${VERDICT}}
+          "
+
+          echo "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          echo "$SUMMARY"
+
+          # 幂等开单：每窗口一个 open issue（标题指纹），重跑只追加 comment
+          if [ -n "$VIOLATIONS" ]; then
+            TITLE="Actions budget alert: ${SINCE} ~ ${UNTIL}"
+            BODY="${SUMMARY}
+
+          ---
+          Automated by actions-budget-guard. One open issue per window; reruns within the same window append a comment instead of duplicating."
+            EXISTING=$(gh issue list -R "${OWNER}/infraro-core" --state open --label "${LABEL}" \
+              --search "in:title \"${TITLE}\"" --json number --jq '.[0].number // empty' || echo "")
+            if [ -n "${EXISTING:-}" ]; then
+              echo "Open issue #${EXISTING} already matches this window — appending comment (idempotent)"
+              gh issue comment "${EXISTING}" -R "${OWNER}/infraro-core" --body "${BODY}"
+            else
+              CREATED=$(gh issue create -R "${OWNER}/infraro-core" --title "${TITLE}" --label "${LABEL}" --body "${BODY}")
+              echo "Opened budget alert issue: ${CREATED}"
+            fi
+          else
+            echo "No violations — no issue opened (idempotent no-op)"
+          fi
