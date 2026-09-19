@@ -260,8 +260,16 @@ class TestReusablePipelineTemplateContract:
             )
 
     def test_job_topology(self) -> None:
+        """job 拓扑：authorization-gate → resolve → auto-merge。
+
+        2026-09-19 m6-engine-authorization-gate：入口新增授权门 job（消费仓
+        未授权 fail-loud），resolve 受门；auto-merge 仍只依赖 resolve。
+        守卫语义/防漂移由 tests/test_engine_authorization_gate_contract.py
+        锁定（改拓扑必须两处同改）。
+        """
         jobs = _load_doc(AUTO_MERGE_PIPELINE_YML)["jobs"]
-        assert set(jobs.keys()) == {"resolve", "auto-merge"}
+        assert set(jobs.keys()) == {"authorization-gate", "resolve", "auto-merge"}
+        assert jobs["resolve"].get("needs") == "authorization-gate"
         assert jobs["auto-merge"].get("needs") == "resolve"
         matrix = jobs["auto-merge"]["strategy"]["matrix"]
         assert matrix["pr_number"] == "${{ fromJSON(needs.resolve.outputs.pr_numbers) }}"

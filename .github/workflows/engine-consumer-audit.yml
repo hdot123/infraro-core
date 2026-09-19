@@ -1,0 +1,289 @@
+# Engine Consumer Audit — 引擎消费引用/授权周审计（m6-engine-authorization-gate）
+#
+# 目的：全账号漂移审计——哪些仓的 workflow 引用了 hdot123/infraro-core@… 的
+# reusable workflow / composite action，这些仓是否持有消费授权（repo variable
+# ENGINE_CONSUMERS 含 authorized 令牌）。未授权引用 = 违规，在引擎仓开幂等
+# Issue 告警（同指纹只追加评论，不重复开单；零违规恢复时评论并关闭）。
+#
+# 数据面：
+# - 候选仓 = 账号公开仓（users/{owner}/repos）+ 当前 token 可见仓
+#   （user/repos?affiliation=owner，覆盖 token 范围内的私有仓）；
+#   过滤 fork / archived / 无默认分支。
+# - 引擎引用扫描 = 默认分支 .github/workflows/** 下全部 .yml/.yaml 全文匹配
+#   引擎仓名（hdot123/infraro-core）。
+# - 授权状态 = GET /repos/{owner}/{repo}/actions/variables/ENGINE_CONSUMERS：
+#   404（未设置）= 未授权（引用引擎即违规）；非 404 读错误（如 token 缺
+#   Variables 读权限的 403）= unknown，计入覆盖缺口、不据此开告警单（防误报）。
+#   实测：GITHUB_TOKEN（含 actions:read）读该端点返回 403（Variables 权限面
+#   不在 GITHUB_TOKEN 授权集内）→ 审计必须用具备 Variables 读权限的 token
+#   （当前 DISPATCH_TOKEN 的实际权限以首跑报告为准）。
+# - 引擎仓自身豁免（只登记不计违规）。
+#
+# 凭证面：DISPATCH_TOKEN（跨仓读取私有仓）缺省回退 GITHUB_TOKEN（公开仓可读，
+# 本仓 Issue 可开）；私有仓超出 token 仓库范围记 unreachable，不计入违规判定，
+# 覆盖缺口逐条写入报告（扩展 PAT 仓库范围后自动纳入）。
+#
+# 幂等：Issue 指纹 = 固定标题 "Engine consumer audit: unauthorized engine references"
+# （单一 open 单，重跑只追加评论；沿用 actions-budget-guard 的幂等模式）。
+
+name: Engine Consumer Audit
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # weekly, Monday 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  # 最小权限基线；issues:write 仅下放到唯一审计 job。
+  contents: read
+
+concurrency:
+  group: engine-consumer-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.DISPATCH_TOKEN || github.token }}
+      OWNER: hdot123
+      ENGINE_REPO: hdot123/infraro-core
+      VARIABLE_NAME: ENGINE_CONSUMERS
+      AUTHORIZED_TOKEN: authorized
+      ALERT_LABEL: automation
+      ALERT_TITLE: 'Engine consumer audit: unauthorized engine references'
+    steps:
+      - name: Scan account for engine references and authorization
+        id: scan
+        run: |
+          set -euo pipefail
+
+          WORK="${RUNNER_TEMP}/engine-consumer-audit"
+          mkdir -p "${WORK}"
+          REPORT="${WORK}/report.md"
+          UNIVERSE="${WORK}/repos.tsv"
+          VIOLATIONS="${WORK}/violations.tsv"
+          DETAILS="${WORK}/violations-detail.txt"
+          GAPS="${WORK}/coverage-gaps.txt"
+          TABLE="${WORK}/table.md"
+          : >"${UNIVERSE}"
+          : >"${VIOLATIONS}"
+          : >"${DETAILS}"
+          : >"${GAPS}"
+
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # ── 1) 候选仓发现（非 fork / 非 archived / 有默认分支）──
+          discover() {
+            endpoint="$1"
+            label="$2"
+            out="${WORK}/discover-${label}.tsv"
+            if gh api "${endpoint}" --paginate \
+                --jq '.[] | select(.fork == false and .archived == false) | select((.default_branch // "") != "") | [.full_name, .default_branch] | @tsv' \
+                >"${out}" 2>"${WORK}/discover-${label}.err"; then
+              cat "${out}" >>"${UNIVERSE}"
+            else
+              echo "::warning::候选仓发现失败（${label}）：$(head -c 200 "${WORK}/discover-${label}.err")"
+              echo "- ${label} 发现端点失败：$(head -c 200 "${WORK}/discover-${label}.err")" >>"${GAPS}"
+            fi
+          }
+          discover "users/${OWNER}/repos?per_page=100&type=owner" "public"
+          discover "user/repos?per_page=100&affiliation=owner" "token"
+
+          sort -u "${UNIVERSE}" -o "${UNIVERSE}"
+          TOTAL=0
+          if [ -s "${UNIVERSE}" ]; then
+            TOTAL="$(wc -l <"${UNIVERSE}" | tr -d ' ')"
+          fi
+          if [ "${TOTAL}" -eq 0 ]; then
+            echo "::error::候选仓发现结果为 0——拒绝输出空审计（token/网络异常）"
+            exit 1
+          fi
+
+          AUTHORIZED=0
+          UNAUTHORIZED=0
+          UNKNOWN=0
+          UNREACHABLE=0
+          EXEMPT=0
+          VIOLATION_COUNT=0
+
+          {
+            echo "| 仓 | 可见性 | ${VARIABLE_NAME} | 引擎引用行 | 判定 |"
+            echo "|---|---|---|---:|---|"
+          } >"${TABLE}"
+
+          while IFS=$'\t' read -r full branch; do
+            [ -n "${full}" ] || continue
+
+            rc=0
+            vis="$(gh api "repos/${full}" --jq '.visibility' 2>"${WORK}/repo.err")" || rc=$?
+            if [ "${rc}" -ne 0 ]; then
+              UNREACHABLE=$((UNREACHABLE + 1))
+              echo "| ${full} | ? | 不可读 | - | 不可达（token 范围外，不计判定） |" >>"${TABLE}"
+              echo "- ${full}: repo metadata 不可读（$(head -c 160 "${WORK}/repo.err")）" >>"${GAPS}"
+              continue
+            fi
+
+            if [ "${full}" = "${ENGINE_REPO}" ]; then
+              EXEMPT=$((EXEMPT + 1))
+              echo "| ${full} | ${vis} | n/a | n/a | 引擎仓自身（exempt） |" >>"${TABLE}"
+              continue
+            fi
+
+            # ── 2) 授权状态（404 = variable 未设置 = 未授权；非 404 读错误 = unknown）──
+            var_state="unauthorized"
+            rc=0
+            value="$(gh api "repos/${full}/actions/variables/${VARIABLE_NAME}" \
+              --jq '.value' 2>"${WORK}/var.err")" || rc=$?
+            if [ "${rc}" -eq 0 ]; then
+              IFS=',' read -r -a TOKENS <<<"${value}" || true
+              for token in "${TOKENS[@]:-}"; do
+                if [ "$(printf '%s' "${token}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')" = "${AUTHORIZED_TOKEN}" ]; then
+                  var_state="authorized"
+                fi
+              done
+            elif ! grep -q "404" "${WORK}/var.err"; then
+              # 读错误（如 token 缺 Variables 读权限 403）不代表未授权：记 unknown
+              # 并列入覆盖缺口，不据此开告警单（避免误报），扩展 PAT 权限后自动纳入。
+              var_state="unknown"
+              echo "::warning::${full} 的 ${VARIABLE_NAME} 读取失败：$(head -c 200 "${WORK}/var.err")"
+              echo "- ${full}: variable 读取失败（$(head -c 160 "${WORK}/var.err")）" >>"${GAPS}"
+            fi
+
+            # ── 3) 引擎引用扫描（默认分支 workflow 文件全文匹配）──
+            refs=0
+            files=""
+            rc=0
+            files="$(gh api "repos/${full}/git/trees/${branch}?recursive=1" \
+              --jq '.tree[] | select(.type == "blob") | select(.path | test("^\\.github/workflows/.*\\.ya?ml$")) | .path' \
+              2>"${WORK}/tree.err")" || rc=$?
+            if [ "${rc}" -ne 0 ]; then
+              echo "::warning::${full} 的 workflow 树读取失败：$(head -c 200 "${WORK}/tree.err")"
+              echo "- ${full}: workflow 树不可读（$(head -c 160 "${WORK}/tree.err")）" >>"${GAPS}"
+            fi
+
+            detail=""
+            while IFS= read -r path; do
+              [ -n "${path}" ] || continue
+              body="$(gh api -H "Accept: application/vnd.github.raw" \
+                "repos/${full}/contents/${path}" 2>/dev/null || true)"
+              hits="$(printf '%s\n' "${body}" | grep -n "${ENGINE_REPO}" || true)"
+              [ -n "${hits}" ] || continue
+              n="$(printf '%s\n' "${hits}" | grep -c . || true)"
+              refs=$((refs + n))
+              detail="${detail}- ${full} :: ${path}
+          $(printf '%s\n' "${hits}" | sed 's/^/    /')
+          "
+            done <<<"${files}"
+
+            if [ "${var_state}" = "authorized" ]; then
+              AUTHORIZED=$((AUTHORIZED + 1))
+              verdict="authorized"
+            elif [ "${var_state}" = "unknown" ]; then
+              UNKNOWN=$((UNKNOWN + 1))
+              verdict="unknown（变量不可读，不计违规）"
+            else
+              UNAUTHORIZED=$((UNAUTHORIZED + 1))
+              verdict="unauthorized"
+            fi
+            if [ "${refs}" -gt 0 ] && [ "${var_state}" = "unauthorized" ]; then
+              VIOLATION_COUNT=$((VIOLATION_COUNT + 1))
+              verdict="VIOLATION 未授权引用"
+              printf '%s\t%s\t%s\n' "${full}" "${refs}" "${var_state}" >>"${VIOLATIONS}"
+              printf '%s' "${detail}" >>"${DETAILS}"
+            fi
+
+            echo "| ${full} | ${vis} | ${var_state} | ${refs} | ${verdict} |" >>"${TABLE}"
+            echo "scanned ${full}: visibility=${vis} variable=${var_state} engine_refs=${refs} verdict=${verdict}"
+          done <"${UNIVERSE}"
+
+          # ── 4) 报告（步骤摘要 + 日志双载体）──
+          {
+            echo "## Engine Consumer Audit（引擎消费授权审计）"
+            echo
+            echo "- 扫描时间（UTC）：${NOW}"
+            echo "- 候选仓（非 fork / 非 archived / 有默认分支）：${TOTAL}"
+            echo "- 授权仓：${AUTHORIZED} · 未授权仓：${UNAUTHORIZED} · 变量不可读：${UNKNOWN} · 不可达仓：${UNREACHABLE} · 引擎仓豁免：${EXEMPT}"
+            echo "- 未授权引用违规：${VIOLATION_COUNT}"
+            echo
+            cat "${TABLE}"
+            echo
+            echo "### 覆盖说明"
+            echo
+            echo "候选仓 = 账号公开仓（users/${OWNER}/repos）+ 当前 token 可见仓（user/repos）；"
+            echo "私有仓超出 token 仓库范围时记 unreachable（不计入违规判定）。"
+            if [ -s "${GAPS}" ]; then
+              echo
+              echo "覆盖缺口："
+              cat "${GAPS}"
+            fi
+            echo
+            echo "### 违规明细"
+            echo
+            if [ "${VIOLATION_COUNT}" -gt 0 ]; then
+              cat "${DETAILS}"
+            else
+              echo "无——本轮未发现未授权引擎引用。"
+            fi
+          } >"${REPORT}"
+
+          if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            {
+              echo "violations=${VIOLATION_COUNT}"
+              echo "candidates=${TOTAL}"
+              echo "report=${REPORT}"
+            } >>"${GITHUB_OUTPUT}"
+          fi
+
+          echo "engine consumer audit complete: candidates=${TOTAL} violations=${VIOLATION_COUNT} report=${REPORT}"
+      - name: Publish audit report
+        run: |
+          set -euo pipefail
+          REPORT="${RUNNER_TEMP}/engine-consumer-audit/report.md"
+          if [ ! -f "${REPORT}" ]; then
+            echo "::warning::审计报告缺失（scan 步未产出），跳过发布"
+            exit 0
+          fi
+          cat "${REPORT}"
+          cat "${REPORT}" >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+      - name: Open or update drift alert (idempotent)
+        env:
+          VIOLATION_COUNT: ${{ steps.scan.outputs.violations }}
+        run: |
+          set -euo pipefail
+
+          WORK="${RUNNER_TEMP}/engine-consumer-audit"
+          REPORT="${WORK}/report.md"
+          VIOLATION_COUNT="${VIOLATION_COUNT:-0}"
+
+          # 幂等指纹：固定标题的单一 open issue；重跑只追加评论，不重复开单。
+          EXISTING="$(gh issue list -R "${ENGINE_REPO}" --state open --label "${ALERT_LABEL}" \
+            --search "in:title \"${ALERT_TITLE}\"" --json number --jq '.[0].number // empty' || true)"
+
+          if [ "${VIOLATION_COUNT}" -gt 0 ]; then
+            BODY="$(cat "${REPORT}")
+
+          ---
+          Automated by engine-consumer-audit（weekly）。授权四步：variable → PAT → runner → 6 阶段验收（见消费仓接入指南）。同一指纹 issue 只追加评论，不重复开单；零违规恢复时自动评论并关闭。"
+            if [ -n "${EXISTING}" ]; then
+              echo "已存在同指纹 open issue #${EXISTING}——追加评论（幂等，不重复开单）"
+              gh issue comment "${EXISTING}" -R "${ENGINE_REPO}" --body "${BODY}"
+            else
+              CREATED="$(gh issue create -R "${ENGINE_REPO}" --title "${ALERT_TITLE}" --label "${ALERT_LABEL}" --body "${BODY}")"
+              echo "已开告警 issue：${CREATED}"
+            fi
+          else
+            if [ -n "${EXISTING}" ]; then
+              echo "本轮零违规——评论并关闭既有告警 issue #${EXISTING}"
+              gh issue comment "${EXISTING}" -R "${ENGINE_REPO}" \
+                --body "本轮扫描（$(date -u +%Y-%m-%d)）未发现未授权引擎引用，自动关闭该告警；漂移复现时自动重开新单。"
+              gh issue close "${EXISTING}" -R "${ENGINE_REPO}" --reason completed
+            else
+              echo "本轮零违规且无既有告警 issue——无操作（幂等 no-op）"
+            fi
+          fi
