@@ -17,6 +17,11 @@ jobs:
   announce:
     name: Announce release to broadcast endpoint
     runs-on: ubuntu-latest
+    # 2026-09-19 governance（VAL-CORE-009/VAL-CROSS-004）：公告 job 走
+    # production environment 审批门（required reviewer hdot123）。release
+    # published 事件触发后 deployment 排队等待批准，批准后送达广播端点。
+    # 部署分支策略含 tag v*（本 job 由 refs/tags/v* 触发）。
+    environment: production
     timeout-minutes: 5
     steps:
       - name: Verify broadcast secrets
