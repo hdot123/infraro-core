@@ -226,9 +226,9 @@ untracked 文件不拦截派发（会话层保护兜底，session 8c635f22 实�
 1. 当 infra-core 可复用 workflow 顶层新增 `permissions` 条目时，消费方薄调用方必须同步放行对应权限
 2. 调用方的 job-level permissions 同样需要覆盖 callee 所需集合
 3. 升级 infra-core pin 版本时，必须核对 callee 顶层权限 vs 调用方授予集
-4. 引擎授权门（§9）在入口 job 声明 `actions: read` 读 repo variable——caller 的
-   顶层/job 级权限集必须含 `actions: read`（或 `actions: write`），否则授权门
-   读取失败会 fail-closed 拦停整条管线
+4. 引擎授权门（§9）入口 job 声明 `actions: read`（`gh api` 回退路径；`vars`
+   上下文路径零权限）——caller 的顶层/job 级权限集需含 `actions: read`（或 write）。
+   引擎 pipeline 顶层本就声明该权限，缺它在 startup 阶段即失败（0 job）
 
 **实例**：`actions: read` 由 PR #176（commit 71917c1）引入，自 v0.10.0 起存在。
 PR #1113 把 infra-core pin 从 v0.7.2 直升 v0.11.1 的大跨跳跨过了引入版本，
@@ -306,10 +306,14 @@ python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 4. **6 阶段验收**：按 `engine-onboarding-gateway` 清单逐项验收（静态契约 → 引擎试扫 →
    平台配置 → 端到端 → 故障处置 → 验收报告），全 ✅/➖ 才算接入完成。
 
-> **守卫 + 审计**：入口守卫在所有引擎管线入口生效；每周一 02:00 UTC 的
-> `Engine Consumer Audit` 扫描全账号对引擎的 workflow 引用，与各仓
+> **守卫 + 审计**：入口守卫在所有引擎管线入口生效，判定优先级 = 引擎仓豁免 →
+> `vars` 上下文值（零权限、零 API 调用，命中即短路）→ `gh api` 回退；每周一
+> 02:00 UTC 的 `Engine Consumer Audit` 扫描全账号对引擎的 workflow 引用，与各仓
 > `ENGINE_CONSUMERS` 对照，未授权引用在引擎仓开幂等告警 Issue（同指纹只追加
-> 评论；零违规恢复时自动评论并关闭）。
+> 评论；零违规恢复时自动评论并关闭；variable 不可读记 unknown 不计违规）。
 >
-> **权限同步**：调用引擎 reusable workflow 的 caller 需授予 `actions: read`
-> （授权门读 repo variable 的最小面），见 §7 权限同步守则。
+> **权限与实测结论**：`GITHUB_TOKEN`（即使 job 声明 `actions: read`）读
+> `/repos/{o}/{r}/actions/variables/{name}` 实测返回 403（Variables 权限面不在
+> GITHUB_TOKEN 授权集内），故授权门以 `vars` 上下文为第一判定源（变量归属已实测
+> = caller 仓）；`actions: read` 保留给 `gh api` 回退路径，caller 授予集需覆盖
+> 该权限（见 §7 权限同步守则）。
