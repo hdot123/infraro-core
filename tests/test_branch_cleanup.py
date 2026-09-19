@@ -1042,10 +1042,13 @@ def test_workflow_calls_composite_action():
     assert "inputs.branch" in with_map["trigger-branch"]
     assert "github.event.pull_request.head.ref" in with_map["trigger-branch"]
     # Token forwarding (branch deletion + issue management)
-    # SNAKE-CONVERGENCE (v0.18.5): secrets 引用统一小写 snake
-    # （GHA secrets 上下文大小写不敏感，with: 键仍为 composite action 契约 kebab）
-    assert with_map["dispatch-token"] == "${{ secrets.dispatch_token }}"
-    assert with_map["linear-api-key"] == "${{ secrets.linear_api_key }}"
+    # 2026-09-19 governance：secret 引用统一大写，与 m2 已转换的消费仓 caller
+    # 及本仓 secret 实际名（DISPATCH_TOKEN / LINEAR_API_KEY）对齐。
+    # 实测事实：GHA secrets 上下文大小写不敏感（本仓小写形态长期可用，
+    # 分支清理建单 author=hdot123 即证），本改动为命名收敛，无行为变化。
+    # （with: 键仍为 composite action 契约 kebab）
+    assert with_map["dispatch-token"] == "${{ secrets.DISPATCH_TOKEN }}"
+    assert with_map["linear-api-key"] == "${{ secrets.LINEAR_API_KEY }}"
 
     steps_blob = "\n".join(str(s) for s in steps)
     assert "scripts/branch_cleanup.sh" not in steps_blob, (
