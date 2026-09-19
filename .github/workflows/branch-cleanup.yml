@@ -56,15 +56,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.event.repository.full_name || github.repository }}
+          VARS_VALUE: ${{ vars.ENGINE_CONSUMERS }}
         run: |
           set -euo pipefail
 
-          # 引擎授权门（engine authorization gate）——未授权消费引擎的仓在管线入口
+          # 引擎授权门（engine authorization gate）——消费仓未授权时在管线入口
           # fail-loud，不静默跳过。判定链：
           #   ① 引擎仓自身豁免（默认 hdot123/infraro-core）
-          #   ② 读本仓 repo variable（GITHUB_TOKEN 只读最小面 actions:read）
-          #   ③ 值含 authorized 令牌 → 放行；缺席 / 异值 / 读取失败 → 失败
+          #   ② 优先用 vars 上下文值（caller 仓 repo variable，零权限、零 API 调用）
+          #   ③ 回退 gh api 读 repo variable（需 token 具备 Variables 读权限；
+          #      GITHUB_TOKEN 实测无该权限 → 403，故仅作回退/诊断路径）
+          #   ④ 未授权 / 读取失败 → 失败（fail-closed，不静默放行）
           REPO="${REPO:-${GITHUB_REPOSITORY:-}}"
+          VARS_VALUE="${VARS_VALUE:-}"
           VARIABLE_NAME="${ENGINE_AUTHORIZATION_VARIABLE:-ENGINE_CONSUMERS}"
           AUTHORIZED_TOKEN="${ENGINE_AUTHORIZATION_TOKEN:-authorized}"
           EXEMPT_REPOS="${ENGINE_AUTHORIZATION_EXEMPT_REPOS:-hdot123/infraro-core}"
@@ -82,37 +86,41 @@ jobs:
             fi
           done
 
-          RAW="$(mktemp)"
-          rc=0
-          gh api "repos/${REPO}/actions/variables/${VARIABLE_NAME}" >"${RAW}" 2>&1 || rc=$?
-          if [ "${rc}" -ne 0 ]; then
-            if grep -q "404" "${RAW}"; then
-              echo "::error::${ALERT}：${REPO} 未设置 repo variable ${VARIABLE_NAME}（授权四步：variable → PAT → runner → 6 阶段验收）"
-            else
-              echo "::error::${ALERT}：${REPO} 授权状态读取失败（rc=${rc}）：$(head -c 400 "${RAW}")"
-            fi
-            rm -f "${RAW}"
-            exit 1
-          fi
+          matches_token() {
+            IFS=',' read -r -a TOKENS <<<"$1" || true
+            for token in "${TOKENS[@]:-}"; do
+              if [ "$(printf '%s' "${token}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')" = "${AUTHORIZED_TOKEN}" ]; then
+                return 0
+              fi
+            done
+            return 1
+          }
 
-          VALUE="$(jq -r '.value // ""' <"${RAW}")"
-          rm -f "${RAW}"
-
-          MATCHED=0
-          IFS=',' read -r -a TOKENS <<<"${VALUE}" || true
-          for token in "${TOKENS[@]:-}"; do
-            normalized="$(printf '%s' "${token}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-            if [ "${normalized}" = "${AUTHORIZED_TOKEN}" ]; then
-              MATCHED=1
-            fi
-          done
-
-          if [ "${MATCHED}" -eq 1 ]; then
-            echo "Authorization gate: ${REPO} authorized（${VARIABLE_NAME}=${VALUE}）"
+          if matches_token "${VARS_VALUE}"; then
+            echo "Authorization gate: ${REPO} authorized（${VARIABLE_NAME}=${VARS_VALUE} @vars）"
             exit 0
           fi
 
-          echo "::error::${ALERT}：${REPO} 的 ${VARIABLE_NAME} 当前值为 '${VALUE}'，未包含授权令牌 '${AUTHORIZED_TOKEN}'"
+          RAW="$(mktemp)"
+          rc=0
+          gh api "repos/${REPO}/actions/variables/${VARIABLE_NAME}" >"${RAW}" 2>&1 || rc=$?
+          if [ "${rc}" -eq 0 ]; then
+            VALUE="$(jq -r '.value // ""' <"${RAW}")"
+            rm -f "${RAW}"
+            if matches_token "${VALUE}"; then
+              echo "Authorization gate: ${REPO} authorized（${VARIABLE_NAME}=${VALUE} @api）"
+              exit 0
+            fi
+            echo "::error::${ALERT}：${REPO} 的 ${VARIABLE_NAME} 当前值为 '${VALUE}'，未包含授权令牌 '${AUTHORIZED_TOKEN}'"
+            exit 1
+          fi
+
+          if grep -q "404" "${RAW}"; then
+            echo "::error::${ALERT}：${REPO} 未设置 repo variable ${VARIABLE_NAME}（vars 上下文值亦为空；授权四步：variable → PAT → runner → 6 阶段验收）"
+          else
+            echo "::error::${ALERT}：${REPO} 授权状态不可读（vars 上下文值为空，rc=${rc}）：$(head -c 400 "${RAW}")"
+          fi
+          rm -f "${RAW}"
           exit 1
 
   cleanup:

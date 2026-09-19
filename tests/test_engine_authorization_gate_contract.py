@@ -134,10 +134,13 @@ def _run_bash(script: str, tmp_path: Path, env: dict[str, str]) -> subprocess.Co
 
 
 GATE_STUB_GH = """#!/usr/bin/env bash
-# 最小 gh stub：只回 repo variable 端点，按 STUB_MODE 分支。
+# 最小 gh stub：只回 repo variable 端点，按 STUB_MODE 分支；调用落 STUB_CALLS。
 if [ "${1:-}" != "api" ]; then
   echo "stub gh: unexpected argv: $*" >&2
   exit 3
+fi
+if [ -n "${STUB_CALLS:-}" ]; then
+  echo "api $*" >>"${STUB_CALLS}"
 fi
 case "${STUB_MODE}" in
   authorized) echo '{"name":"ENGINE_CONSUMERS","value":"authorized"}'; exit 0 ;;
@@ -145,6 +148,7 @@ case "${STUB_MODE}" in
   other) echo '{"name":"ENGINE_CONSUMERS","value":"no"}'; exit 0 ;;
   empty) echo '{"name":"ENGINE_CONSUMERS","value":""}'; exit 0 ;;
   missing) echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
+  forbidden) echo '{"message":"Resource not accessible by integration","status":"403"}' >&2; exit 1 ;;
   error) echo "gh: Server Error (HTTP 500)" >&2; exit 1 ;;
   *) echo "stub gh: unknown STUB_MODE ${STUB_MODE}" >&2; exit 3 ;;
 esac
@@ -207,6 +211,9 @@ if mode == "api":
         sys.exit(0)
     if endpoint.endswith("/actions/variables/ENGINE_CONSUMERS"):
         repo = REPOS[endpoint[len("repos/"):-len("/actions/variables/ENGINE_CONSUMERS")]]
+        if repo.get("variable_error"):
+            print('{"message":"Resource not accessible by integration","status":"403"}', file=sys.stderr)
+            sys.exit(1)
         if repo.get("variable") is None:
             print("gh: Not Found (HTTP 404)", file=sys.stderr)
             sys.exit(1)
@@ -335,6 +342,16 @@ def _audit_scenario(existing_issue: int | None = None) -> dict[str, Any]:
                 "discover_via": ["token"],
                 "unreachable": True,
             },
+            {
+                "full_name": "hdot123/var-unreadable",
+                "branch": "main",
+                "visibility": "private",
+                "discover_via": ["token"],
+                "variable": None,
+                "variable_error": True,
+                "workflow_files": [engine_yml],
+                "files": {engine_yml: "uses: hdot123/infraro-core/x@v0.18.7\n"},
+            },
         ],
     }
 
@@ -384,7 +401,7 @@ class TestGateJobPresence:
 
     @pytest.mark.parametrize("rel", ALL_GATE_FILES)
     def test_gate_reads_event_repository_full_name(self, rel: str) -> None:
-        """repo 全名读 github.event.repository.full_name（带 github.repository 兜底）。"""
+        """repo 全名读 github.event.repository.full_name；授权值优先取 vars 上下文。"""
         step_env = _gate_job(rel)["steps"][0].get("env") or {}
         repo_expr = str(step_env.get("REPO", ""))
         assert "github.event.repository.full_name" in repo_expr, (
@@ -393,6 +410,9 @@ class TestGateJobPresence:
         assert "github.repository" in repo_expr, f"{rel} 守卫 REPO env 缺少 github.repository 兜底"
         assert step_env.get("GH_TOKEN") == "${{ github.token }}", (
             f"{rel} 守卫必须用 github.token（GITHUB_TOKEN），不消费 PAT"
+        )
+        assert step_env.get("VARS_VALUE") == f"${{{{ vars.{VARIABLE_NAME} }}}}", (
+            f"{rel} 守卫必须注入 vars 上下文值（零权限路径），实际 {step_env.get('VARS_VALUE')!r}"
         )
 
 
@@ -412,11 +432,22 @@ class TestGateSemantics:
         assert "exit 1" in script and "exit 0" in script
 
     @pytest.mark.parametrize("rel", ALL_GATE_FILES)
+    def test_gate_prefers_vars_context_with_api_fallback(self, rel: str) -> None:
+        """判定顺序：vars 上下文（零权限）优先，gh api 回退（GITHUB_TOKEN 实测 403）。"""
+        script = _gate_run(rel)
+        assert 'VARS_VALUE="${VARS_VALUE:-}"' in script, f"{rel} 必须读取 vars 上下文注入值"
+        assert 'matches_token "${VARS_VALUE}"' in script, f"{rel} 必须先判 vars 值"
+        assert "@vars" in script and "@api" in script, f"{rel} 必须区分 vars / api 两条判定来源"
+        vars_pos = script.index('matches_token "${VARS_VALUE}"')
+        api_pos = script.index('gh api "repos/')
+        assert vars_pos < api_pos, f"{rel} vars 判定必须早于 api 回退（最短路径零 API 调用）"
+
+    @pytest.mark.parametrize("rel", ALL_GATE_FILES)
     def test_gate_script_fails_closed_on_read_errors(self, rel: str) -> None:
         """读取异常（非 404）也必须 fail-closed，不静默放行。"""
         script = _gate_run(rel)
         assert 'grep -q "404"' in script, f"{rel} 必须区分「variable 缺席(404)」与「读取异常」"
-        assert "授权状态读取失败" in script, f"{rel} 读取异常路径必须显式报错"
+        assert "授权状态不可读" in script, f"{rel} 读取异常路径必须显式报错"
 
     def test_all_carrier_scripts_byte_identical_after_dedent(self) -> None:
         """四载体守卫脚本去缩进后逐字节一致——单一语义，改一处必须四处同改。"""
@@ -431,13 +462,23 @@ class TestGateSemantics:
 
 
 _GATE_SCENARIOS = {
-    "exempt_engine_repo": (EXEMPT_REPO, "missing", 0, "豁免"),
-    "authorized": ("hdot123/consumer-a", "authorized", 0, "authorized"),
-    "authorized_spaced_case_insensitive": ("hdot123/consumer-a", "spaced", 0, "authorized"),
-    "unauthorized_other_value": ("hdot123/consumer-a", "other", 1, FAIL_MESSAGE),
-    "unauthorized_empty_value": ("hdot123/consumer-a", "empty", 1, FAIL_MESSAGE),
-    "unauthorized_variable_missing": ("hdot123/consumer-a", "missing", 1, FAIL_MESSAGE),
-    "fail_closed_on_read_error": ("hdot123/consumer-a", "error", 1, FAIL_MESSAGE),
+    # scenario: (repo, vars_value, stub_mode, expected_rc, needle)
+    "exempt_engine_repo": (EXEMPT_REPO, "", "missing", 0, "豁免"),
+    "vars_authorized": ("hdot123/consumer-a", AUTHORIZED_TOKEN, "missing", 0, "@vars"),
+    "vars_authorized_spaced_case": (
+        "hdot123/consumer-a",
+        " prod , AUTHORIZED ",
+        "missing",
+        0,
+        "@vars",
+    ),
+    "api_fallback_authorized": ("hdot123/consumer-a", "", "authorized", 0, "@api"),
+    "unauthorized_other_value": ("hdot123/consumer-a", "", "other", 1, FAIL_MESSAGE),
+    "unauthorized_empty_value": ("hdot123/consumer-a", "", "empty", 1, FAIL_MESSAGE),
+    "unauthorized_variable_missing": ("hdot123/consumer-a", "", "missing", 1, FAIL_MESSAGE),
+    "unauthorized_vars_other_value": ("hdot123/consumer-a", "no", "missing", 1, FAIL_MESSAGE),
+    "fail_closed_on_api_403": ("hdot123/consumer-a", "", "forbidden", 1, FAIL_MESSAGE),
+    "fail_closed_on_read_error": ("hdot123/consumer-a", "", "error", 1, FAIL_MESSAGE),
 }
 
 
@@ -448,13 +489,13 @@ class TestGateBehavior:
         self,
         rel: str,
         scenario: str,
-        expected: tuple[str, str, int, str],
+        expected: tuple[str, str, str, int, str],
         tmp_path: Path,
     ) -> None:
-        """逐载体执行内联守卫脚本：授权 pass / 未授权与异常 fail-loud。"""
-        repo, stub_mode, expected_rc, needle = expected
+        """逐载体执行内联守卫脚本：vars/api 授权 pass、未授权与异常 fail-loud。"""
+        repo, vars_value, stub_mode, expected_rc, needle = expected
         env = _stub_env(tmp_path, GATE_STUB_GH)
-        env.update({"STUB_MODE": stub_mode, "REPO": repo})
+        env.update({"STUB_MODE": stub_mode, "REPO": repo, "VARS_VALUE": vars_value})
         result = _run_bash(_gate_run(rel), tmp_path, env)
         output = result.stdout + result.stderr
         assert result.returncode == expected_rc, (
@@ -463,10 +504,23 @@ class TestGateBehavior:
         assert needle in output, f"{rel} 场景 {scenario} 输出缺少 {needle!r}：{output}"
 
     @pytest.mark.parametrize("rel", ALL_GATE_FILES)
+    def test_gate_vars_path_makes_zero_api_calls(self, rel: str, tmp_path: Path) -> None:
+        """vars 命中即短路：零 API 调用、零权限依赖（最小面实证）。"""
+        env = _stub_env(tmp_path, GATE_STUB_GH)
+        env.update(
+            {"STUB_MODE": "forbidden", "REPO": "hdot123/consumer-a", "VARS_VALUE": AUTHORIZED_TOKEN}
+        )
+        result = _run_bash(_gate_run(rel), tmp_path, env)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert not (tmp_path / "stub-calls.log").exists(), (
+            f"{rel} vars 命中时不得发起 API 调用（stub 被调用即违规）"
+        )
+
+    @pytest.mark.parametrize("rel", ALL_GATE_FILES)
     def test_gate_failure_is_loud_and_actionable(self, rel: str, tmp_path: Path) -> None:
         """未授权失败必须是 ::error:: 注解 + 指向授权流程（不静默）。"""
         env = _stub_env(tmp_path, GATE_STUB_GH)
-        env.update({"STUB_MODE": "missing", "REPO": "hdot123/consumer-a"})
+        env.update({"STUB_MODE": "missing", "REPO": "hdot123/consumer-a", "VARS_VALUE": ""})
         result = _run_bash(_gate_run(rel), tmp_path, env)
         assert result.returncode == 1
         assert "::error::" in result.stdout, f"{rel} 必须用 ::error:: 注解暴露失败"
@@ -475,12 +529,13 @@ class TestGateBehavior:
 
     @pytest.mark.parametrize("rel", ALL_GATE_FILES)
     def test_gate_exempt_repo_skips_variable_lookup(self, rel: str, tmp_path: Path) -> None:
-        """引擎仓豁免必须在 API 调用前短路（连 stub 都不会被调用）。"""
+        """引擎仓豁免必须在任何判定/API 调用前短路。"""
         env = _stub_env(tmp_path, GATE_STUB_GH)
-        env.update({"STUB_MODE": "authorized", "REPO": EXEMPT_REPO})
+        env.update({"STUB_MODE": "authorized", "REPO": EXEMPT_REPO, "VARS_VALUE": ""})
         result = _run_bash(_gate_run(rel), tmp_path, env)
         assert result.returncode == 0
         assert "豁免" in result.stdout, f"{rel} 引擎仓豁免路径未短路"
+        assert not (tmp_path / "stub-calls.log").exists(), f"{rel} 豁免路径不得发起 API 调用"
 
 
 # ── B. 审计 workflow：结构与幂等契约 ──────────────────────────────────────
@@ -519,6 +574,10 @@ class TestAuditWorkflowStructure:
         assert "git/trees/${branch}?recursive=1" in script, "必须走默认分支 workflow 树扫描"
         assert 'grep -n "${ENGINE_REPO}"' in script, "必须全文匹配引擎仓引用"
         assert "actions/variables/${VARIABLE_NAME}" in script, "必须回读各仓 ENGINE_CONSUMERS"
+        assert 'var_state="unknown"' in script, "非 404 读错误必须记 unknown（防误报）"
+        assert 'if [ "${refs}" -gt 0 ] && [ "${var_state}" = "unauthorized" ]' in script, (
+            "违规判定必须只认确认未授权（unknown 不计违规）"
+        )
         assert 'if [ "${full}" = "${ENGINE_REPO}" ]' in script, "引擎仓自身必须豁免"
         assert "不可达" in script, "必须优雅降级记录不可达仓（token 范围）"
         assert "::error::候选仓发现结果为 0" in script, "候选仓空集必须 fail（防静默空审计）"
@@ -559,22 +618,25 @@ class TestAuditBehavior:
         return result, report + "\n##OUTPUTS##\n" + outputs
 
     def test_scan_classifies_and_reports(self, tmp_path: Path) -> None:
-        """分类正确：授权仓 pass / 未授权引用 violation / 引擎仓豁免 / 不可达降级。"""
+        """分类正确：授权 pass / 未授权引用 violation / 变量不可读 unknown / 豁免 / 不可达。"""
         result, report = self._scan(tmp_path, _audit_scenario())
         assert result.returncode == 0, result.stdout + result.stderr
         assert "engine consumer audit complete" in result.stdout
-        assert "violations=1" in report, f"应仅 infraro 计违规：{report}"
-        assert "candidates=4" in report, report
+        assert "violations=1" in report, f"应仅 infraro 计违规（不可读仓不计）：{report}"
+        assert "candidates=5" in report, report
+        assert "变量不可读：1" in report, report
         assert "引擎仓自身（exempt）" in report, report
         assert "不可达（token 范围外，不计判定）" in report, report
+        assert "unknown（变量不可读，不计违规）" in report, report
         assert "VIOLATION 未授权引用" in report, report
 
     def test_scan_violation_details_exclude_authorized_repos(self, tmp_path: Path) -> None:
-        """违规明细只列违规仓（授权仓的引用行不得混入）。"""
+        """违规明细只列违规仓（授权仓与不可读仓的引用行不得混入）。"""
         _, report = self._scan(tmp_path, _audit_scenario())
         details = report.split("### 违规明细", 1)[1]
         assert "hdot123/infraro" in details, details
         assert "hdot123/consumer-a" not in details, f"授权仓不得出现在违规明细：{details}"
+        assert "hdot123/var-unreadable" not in details, f"不可读仓不得出现在违规明细：{details}"
 
     def _alert(
         self, tmp_path: Path, scenario: dict[str, Any], violation_count: int

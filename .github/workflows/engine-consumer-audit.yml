@@ -11,7 +11,12 @@
 #   过滤 fork / archived / 无默认分支。
 # - 引擎引用扫描 = 默认分支 .github/workflows/** 下全部 .yml/.yaml 全文匹配
 #   引擎仓名（hdot123/infraro-core）。
-# - 授权状态 = GET /repos/{owner}/{repo}/actions/variables/ENGINE_CONSUMERS。
+# - 授权状态 = GET /repos/{owner}/{repo}/actions/variables/ENGINE_CONSUMERS：
+#   404（未设置）= 未授权（引用引擎即违规）；非 404 读错误（如 token 缺
+#   Variables 读权限的 403）= unknown，计入覆盖缺口、不据此开告警单（防误报）。
+#   实测：GITHUB_TOKEN（含 actions:read）读该端点返回 403（Variables 权限面
+#   不在 GITHUB_TOKEN 授权集内）→ 审计必须用具备 Variables 读权限的 token
+#   （当前 DISPATCH_TOKEN 的实际权限以首跑报告为准）。
 # - 引擎仓自身豁免（只登记不计违规）。
 #
 # 凭证面：DISPATCH_TOKEN（跨仓读取私有仓）缺省回退 GITHUB_TOKEN（公开仓可读，
@@ -102,6 +107,7 @@ jobs:
 
           AUTHORIZED=0
           UNAUTHORIZED=0
+          UNKNOWN=0
           UNREACHABLE=0
           EXEMPT=0
           VIOLATION_COUNT=0
@@ -129,7 +135,7 @@ jobs:
               continue
             fi
 
-            # ── 2) 授权状态（404 = variable 未设置 = 未授权）──
+            # ── 2) 授权状态（404 = variable 未设置 = 未授权；非 404 读错误 = unknown）──
             var_state="unauthorized"
             rc=0
             value="$(gh api "repos/${full}/actions/variables/${VARIABLE_NAME}" \
@@ -142,8 +148,11 @@ jobs:
                 fi
               done
             elif ! grep -q "404" "${WORK}/var.err"; then
-              echo "::warning::${full} 的 ${VARIABLE_NAME} 读取异常：$(head -c 200 "${WORK}/var.err")"
-              echo "- ${full}: variable 读取异常（$(head -c 160 "${WORK}/var.err")）" >>"${GAPS}"
+              # 读错误（如 token 缺 Variables 读权限 403）不代表未授权：记 unknown
+              # 并列入覆盖缺口，不据此开告警单（避免误报），扩展 PAT 权限后自动纳入。
+              var_state="unknown"
+              echo "::warning::${full} 的 ${VARIABLE_NAME} 读取失败：$(head -c 200 "${WORK}/var.err")"
+              echo "- ${full}: variable 读取失败（$(head -c 160 "${WORK}/var.err")）" >>"${GAPS}"
             fi
 
             # ── 3) 引擎引用扫描（默认分支 workflow 文件全文匹配）──
@@ -175,11 +184,14 @@ jobs:
             if [ "${var_state}" = "authorized" ]; then
               AUTHORIZED=$((AUTHORIZED + 1))
               verdict="authorized"
+            elif [ "${var_state}" = "unknown" ]; then
+              UNKNOWN=$((UNKNOWN + 1))
+              verdict="unknown（变量不可读，不计违规）"
             else
               UNAUTHORIZED=$((UNAUTHORIZED + 1))
               verdict="unauthorized"
             fi
-            if [ "${refs}" -gt 0 ] && [ "${var_state}" != "authorized" ]; then
+            if [ "${refs}" -gt 0 ] && [ "${var_state}" = "unauthorized" ]; then
               VIOLATION_COUNT=$((VIOLATION_COUNT + 1))
               verdict="VIOLATION 未授权引用"
               printf '%s\t%s\t%s\n' "${full}" "${refs}" "${var_state}" >>"${VIOLATIONS}"
@@ -196,7 +208,7 @@ jobs:
             echo
             echo "- 扫描时间（UTC）：${NOW}"
             echo "- 候选仓（非 fork / 非 archived / 有默认分支）：${TOTAL}"
-            echo "- 授权仓：${AUTHORIZED} · 未授权仓：${UNAUTHORIZED} · 不可达仓：${UNREACHABLE} · 引擎仓豁免：${EXEMPT}"
+            echo "- 授权仓：${AUTHORIZED} · 未授权仓：${UNAUTHORIZED} · 变量不可读：${UNKNOWN} · 不可达仓：${UNREACHABLE} · 引擎仓豁免：${EXEMPT}"
             echo "- 未授权引用违规：${VIOLATION_COUNT}"
             echo
             cat "${TABLE}"
