@@ -5,8 +5,9 @@ gh subprocess + 优雅降级模式。
 
 F7 断言 5 组线上值：
 1. allowed_actions=selected, sha_pinning_required=true, enabled=true
-2. selected-actions 三元组：github_owned_allowed=true, verified_allowed=false,
-   patterns_allowed 精确集合 ["hdot123/infraro-core/**", "googleapis/*"]
+2. selected-actions 三元组：github_owned_allowed=true, verified_allowed=true,
+   patterns_allowed 精确集合 ["hdot123/infraro-core/**", "googleapis/*", "hdot123/*"]
+   （2026-09-19 #110 治理收紧终态，架构 D4）
 3. approval_policy=all_external_contributors
 4. default_workflow_permissions=read
 5. can_approve_pull_request_reviews=false
@@ -149,11 +150,13 @@ class TestSelectedActionsAllowlist:
         assert data["github_owned_allowed"] is True, (
             f"github_owned_allowed 应为 True, 实际 {data['github_owned_allowed']}"
         )
-        assert data["verified_allowed"] is False, (
-            f"verified_allowed 应为 False, 实际 {data['verified_allowed']}"
+        # 2026-09-19 治理收紧终态（#110，架构 D4）：verified 补开，
+        # patterns 增加 hdot123/* 账号级模式。此处为显式重写治理基线。
+        assert data["verified_allowed"] is True, (
+            f"verified_allowed 应为 True, 实际 {data['verified_allowed']}"
         )
 
-        expected_patterns = {"hdot123/infraro-core/**", "googleapis/*"}
+        expected_patterns = {"hdot123/infraro-core/**", "googleapis/*", "hdot123/*"}
         actual_patterns = set(data["patterns_allowed"])
         assert actual_patterns == expected_patterns, (
             f"patterns_allowed 精确集合不匹配: "
