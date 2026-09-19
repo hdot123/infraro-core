@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.9](https://github.com/hdot123/infraro-core/compare/v0.18.8...v0.18.9) (2026-09-19)
+
+
+### Bug Fixes
+
+* **trigger-error-droid:** update fallback path from ~/memory to ~/infraro-core ([#81](https://github.com/hdot123/infraro-core/issues/81)) ([ccfda3c](https://github.com/hdot123/infraro-core/commit/ccfda3c18439f8d880120135c5c3dfff47fbc5b6))
+* **webhook:** update repository references from hdot123-org/memory to hdot123/infraro-core ([#80](https://github.com/hdot123/infraro-core/issues/80)) ([f94aa9d](https://github.com/hdot123/infraro-core/commit/f94aa9dc42f22e87fb9b2fde812ad6191d7f2563))
+
 ## [0.18.8](https://github.com/hdot123/infraro-core/compare/v0.18.7...v0.18.8) (2026-09-18)
 
 
