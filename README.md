@@ -13,6 +13,13 @@ infraro-core 是从 memory-core 抽离的组织级共享引擎，提供：
 - **CLI**：infra-cli 统一入口
 - **发版公告链路**：引擎发版时自动广播升级公告，消费仓自动接单开 pin-bump PR（详见[发版公告与下游自动接单](#发版公告与下游自动接单)）
 
+## 旧世界引擎层下线状态
+
+- org 旧引擎仓（hdot123-org / infra-core，运行时拼接构造的冻结仓）已于 2026-09-18 正式下线：archived=true，18/19 workflow 已停用（仅 Dependency Graph 内置件保留，GitHub 不可禁用）。
+- 全部能力已迁移到新世界双仓：引擎仓 hdot123/infraro-core + 声明仓 hdot123/infraro。
+- 交付标准详见声明仓 docs/delivery-standard.md（三层交付模型 + 机械验收门）。
+- 终局处置记录见 substrate/infra-core-termination-record.md。
+
 ## 安装
 
 要求 Python 3.12（`requires-python = "==3.12.*"` 锁定）。
@@ -176,20 +183,37 @@ python -m infra_core.governance --author hdot123 --files .evolution/config.yml
 
 MIT
 
-## CI / 分支保护 / droid-review 模型配置（2026-09 现状）
+## CI / 分支保护 / 治理基线（2026-09 现状）
 
 ### CI 结构
 
-CI 门由可复用 workflow 组成，聚合为两个 check：
+CI 门由可复用 workflow 组成，聚合为显式 check：
 
-- `ci-ok`：pytest（`-rA` 逐测试结果行）、集成 / e2e / guards / health-check 聚合门
+- `quality-gate`：外层聚合门，把 ci / qa / substrate 三路结论收敛为单一 required check
+- `ci-ok`：pytest（`-rA` 逐测试结果行）、集成 / e2e / guards / health-check 聚合门（内部已轮询 droid-review）
 - `qa-ok`：QA 门聚合（正确处理 schedule-only job 的 skipped 状态）
+- `substrate-gate-suite`：substrate 五门聚合（job 显示名即 required context）
 
 release-please 发版链路经 `setup-venv` composite action 使用 uv relock，保证发版 PR 与 tag 的锁文件一致性。
 
 ### 分支保护硬化
 
-main 分支 ruleset：required checks = `[ci-ok, qa-ok, droid-review]`，strict（要求分支最新）、linear history、squash-only、admin 无豁免。fork PR 由 droid-review fail-closed 身份检查拦截（见下文 Fork PR 政策）。
+main 分支 ruleset（active，作用域 `~DEFAULT_BRANCH`）：
+
+- required checks = `quality-gate` + `droid-review` + `substrate-gate-suite`，strict（要求分支最新）
+- pull_request：squash-only、0 审批（自动化骨干仓）+ unattributed 变更额外审批、review 线程必须解决
+- `non_fast_forward`（禁强推）、`deletion`（禁删分支）、`required_linear_history`；bypass actors 为空——owner 亦无豁免
+- fork PR 由 droid-review fail-closed 身份检查拦截（见下文 Fork PR 政策）
+
+### 治理基线（2026-09 账号级全量施工）
+
+- **GITHUB_TOKEN 默认权限 `read`**，且禁止 GITHUB_TOKEN 审批 PR；workflow 级 write 已下放到 job 级
+- **allowed actions 收敛为 `selected`**：github-owned + verified 放行，叠加 `hdot123/*` 白名单；本仓额外保留 `googleapis/*`（release-please 链路依赖）
+- **secret scanning + push protection 已启用**（公开仓可用；私有仓受计划限制，见治理报告 blocked-by-plan 清单）
+- **`production` environment**：发版与公告链路 job 走 required reviewer 审批门（branch main + tag `v*`）
+- **CODEOWNERS + Dependabot**：owner 兜底 + 敏感路径；依赖更新覆盖 github-actions / pip（本仓）
+- **预算守卫**：`.github/workflows/actions-budget-guard.yml` 每周汇总各仓 runs 分钟数与失败率，超阈值开 automation Issue
+- 账号级 27 仓（Tier A/B/C）已按同一基线施工，本仓为参照实现；其余仓为同构副本
 
 ### droid-review 自定义模型（lumivane CF AiGateway 双头 BYOM）
 
